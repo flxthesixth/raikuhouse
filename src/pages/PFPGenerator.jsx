@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { toPng } from 'html-to-image'
 import html2canvas from 'html2canvas'
 import Navbar from '../components/Navbar'
@@ -19,7 +19,33 @@ export default function PFPGenerator({ onNavigate, currentPage }) {
   const [cardData, setCardData] = useState(null)
   const [isDownloading, setIsDownloading] = useState(false)
   const [isFetching, setIsFetching] = useState(false)
+  const [cardBackgroundBase64, setCardBackgroundBase64] = useState(null)
   const frontCardRef = useRef(null)
+
+  // Pre-load card background as base64 for reliable capture
+  useEffect(() => {
+    const loadCardBackground = async () => {
+      try {
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        img.src = '/RaikuCard.png'
+        
+        img.onload = () => {
+          const canvas = document.createElement('canvas')
+          canvas.width = img.width
+          canvas.height = img.height
+          const ctx = canvas.getContext('2d')
+          ctx.drawImage(img, 0, 0)
+          const base64 = canvas.toDataURL('image/png')
+          setCardBackgroundBase64(base64)
+          console.log('✅ Card background loaded as base64')
+        }
+      } catch (error) {
+        console.error('Failed to load card background:', error)
+      }
+    }
+    loadCardBackground()
+  }, [])
 
   const handleFetchTwitter = async () => {
     if (!twitter || !twitter.trim()) {
@@ -145,6 +171,13 @@ export default function PFPGenerator({ onNavigate, currentPage }) {
 
   const handleDownload = async () => {
     if (!frontCardRef.current || !cardData) return
+    
+    // Ensure background is loaded
+    if (!cardBackgroundBase64) {
+      alert('Please wait for card template to load...')
+      return
+    }
+    
     setIsDownloading(true)
     
     try {
@@ -168,7 +201,7 @@ export default function PFPGenerator({ onNavigate, currentPage }) {
       console.log('✅ All images loaded')
       
       // Strategy 2: Wait extra time untuk ensure render complete
-      await new Promise(resolve => setTimeout(resolve, 300))
+      await new Promise(resolve => setTimeout(resolve, 500))
       
       let dataUrl
       
@@ -408,7 +441,7 @@ export default function PFPGenerator({ onNavigate, currentPage }) {
                   ref={frontCardRef} 
                   className="card front-card"
                   style={{
-                    backgroundImage: 'url("/RaikuCard.png")',
+                    backgroundImage: cardBackgroundBase64 ? `url("${cardBackgroundBase64}")` : 'url("/RaikuCard.png")',
                     backgroundSize: 'cover',
                     backgroundPosition: 'center',
                   }}
