@@ -1,0 +1,1153 @@
+"use client";
+
+import { useState, useEffect, useCallback, useRef } from "react";
+
+const CELL_SIZE = 20;
+const MAZE_WIDTH = 19;
+const MAZE_HEIGHT = 21;
+
+const LEVEL_CONFIGS = [
+  { baseSpeed: 120, powerSpeed: 80, ghostChaseChance: 0.6, powerDuration: 8000, name: "TRAINING GROUNDS" },
+  { baseSpeed: 110, powerSpeed: 75, ghostChaseChance: 0.7, powerDuration: 7000, name: "SHADOW REALM" },
+  { baseSpeed: 100, powerSpeed: 70, ghostChaseChance: 0.75, powerDuration: 6000, name: "DEMON'S LAIR" },
+  { baseSpeed: 90, powerSpeed: 65, ghostChaseChance: 0.8, powerDuration: 5000, name: "NIGHTMARE ZONE" },
+  { baseSpeed: 80, powerSpeed: 60, ghostChaseChance: 0.9, powerDuration: 4000, name: "FINAL BOSS" },
+];
+
+const MAZES = [
+  [
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+    [1, 3, 1, 1, 2, 1, 1, 1, 2, 1, 2, 1, 1, 1, 2, 1, 1, 3, 1],
+    [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+    [1, 2, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 2, 1],
+    [1, 2, 2, 2, 2, 1, 2, 2, 2, 1, 2, 2, 2, 1, 2, 2, 2, 2, 1],
+    [1, 1, 1, 1, 2, 1, 1, 1, 0, 1, 0, 1, 1, 1, 2, 1, 1, 1, 1],
+    [0, 0, 0, 1, 2, 1, 0, 0, 0, 0, 0, 0, 0, 1, 2, 1, 0, 0, 0],
+    [1, 1, 1, 1, 2, 1, 0, 1, 1, 0, 1, 1, 0, 1, 2, 1, 1, 1, 1],
+    [0, 0, 0, 0, 2, 0, 0, 1, 0, 0, 0, 1, 0, 0, 2, 0, 0, 0, 0],
+    [1, 1, 1, 1, 2, 1, 0, 1, 1, 1, 1, 1, 0, 1, 2, 1, 1, 1, 1],
+    [0, 0, 0, 1, 2, 1, 0, 0, 0, 0, 0, 0, 0, 1, 2, 1, 0, 0, 0],
+    [1, 1, 1, 1, 2, 1, 0, 1, 1, 1, 1, 1, 0, 1, 2, 1, 1, 1, 1],
+    [1, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+    [1, 2, 1, 1, 2, 1, 1, 1, 2, 1, 2, 1, 1, 1, 2, 1, 1, 2, 1],
+    [1, 3, 2, 1, 2, 2, 2, 2, 2, 0, 2, 2, 2, 2, 2, 1, 2, 3, 1],
+    [1, 1, 2, 1, 2, 1, 2, 1, 1, 1, 1, 1, 2, 1, 2, 1, 2, 1, 1],
+    [1, 2, 2, 2, 2, 1, 2, 2, 2, 1, 2, 2, 2, 1, 2, 2, 2, 2, 1],
+    [1, 2, 1, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 1, 2, 1],
+    [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+  ],
+  [
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+    [1, 2, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 2, 1],
+    [1, 3, 1, 0, 0, 2, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 1, 3, 1],
+    [1, 2, 1, 0, 1, 2, 1, 0, 0, 1, 0, 0, 1, 2, 1, 0, 1, 2, 1],
+    [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+    [1, 2, 1, 0, 1, 2, 1, 1, 0, 1, 0, 1, 1, 2, 1, 0, 1, 2, 1],
+    [0, 2, 0, 0, 0, 2, 1, 0, 0, 0, 0, 0, 1, 2, 0, 0, 0, 2, 0],
+    [1, 2, 1, 0, 1, 2, 1, 0, 1, 0, 1, 0, 1, 2, 1, 0, 1, 2, 1],
+    [1, 2, 2, 2, 2, 2, 0, 0, 1, 0, 1, 0, 0, 2, 2, 2, 2, 2, 1],
+    [1, 2, 1, 0, 1, 2, 1, 0, 1, 1, 1, 0, 1, 2, 1, 0, 1, 2, 1],
+    [0, 2, 0, 0, 0, 2, 1, 0, 0, 0, 0, 0, 1, 2, 0, 0, 0, 2, 0],
+    [1, 2, 1, 0, 1, 2, 1, 1, 0, 1, 0, 1, 1, 2, 1, 0, 1, 2, 1],
+    [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+    [1, 2, 1, 0, 1, 2, 1, 0, 0, 1, 0, 0, 1, 2, 1, 0, 1, 2, 1],
+    [1, 3, 1, 0, 0, 2, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 1, 3, 1],
+    [1, 2, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 2, 1],
+    [1, 2, 2, 2, 2, 2, 2, 2, 2, 0, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+    [1, 2, 1, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 1, 2, 1],
+    [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+  ],
+  [
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 1],
+    [1, 3, 1, 2, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, 2, 1, 3, 1],
+    [1, 2, 1, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 1, 2, 1],
+    [1, 2, 1, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 1, 2, 1],
+    [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+    [1, 1, 1, 2, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 2, 1, 1, 1],
+    [0, 0, 0, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 0, 0, 0],
+    [1, 1, 1, 2, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 2, 1, 1, 1],
+    [0, 0, 0, 2, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 2, 0, 0, 0],
+    [1, 1, 1, 2, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 2, 1, 1, 1],
+    [0, 0, 0, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 0, 0, 0],
+    [1, 1, 1, 2, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 2, 1, 1, 1],
+    [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+    [1, 2, 1, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 1, 2, 1],
+    [1, 2, 1, 2, 2, 2, 2, 2, 2, 0, 2, 2, 2, 2, 2, 2, 1, 2, 1],
+    [1, 3, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 3, 1],
+    [1, 2, 2, 2, 1, 2, 2, 2, 2, 1, 2, 2, 2, 2, 1, 2, 2, 2, 1],
+    [1, 2, 1, 1, 1, 2, 1, 1, 2, 1, 2, 1, 1, 2, 1, 1, 1, 2, 1],
+    [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+  ],
+  [
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 1],
+    [1, 2, 1, 1, 1, 2, 1, 2, 1, 1, 1, 2, 1, 2, 1, 1, 1, 2, 1],
+    [1, 3, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 3, 1],
+    [1, 1, 1, 2, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 2, 1, 1, 1],
+    [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+    [1, 2, 1, 1, 1, 2, 1, 1, 0, 1, 0, 1, 1, 2, 1, 1, 1, 2, 1],
+    [0, 2, 2, 2, 1, 2, 1, 0, 0, 0, 0, 0, 1, 2, 1, 2, 2, 2, 0],
+    [1, 1, 1, 2, 1, 2, 1, 0, 1, 0, 1, 0, 1, 2, 1, 2, 1, 1, 1],
+    [0, 0, 0, 2, 0, 2, 0, 0, 1, 0, 1, 0, 0, 2, 0, 2, 0, 0, 0],
+    [1, 1, 1, 2, 1, 2, 1, 0, 1, 1, 1, 0, 1, 2, 1, 2, 1, 1, 1],
+    [0, 2, 2, 2, 1, 2, 1, 0, 0, 0, 0, 0, 1, 2, 1, 2, 2, 2, 0],
+    [1, 2, 1, 1, 1, 2, 1, 1, 0, 1, 0, 1, 1, 2, 1, 1, 1, 2, 1],
+    [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+    [1, 1, 1, 2, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 2, 1, 1, 1],
+    [1, 3, 2, 2, 2, 2, 2, 2, 2, 0, 2, 2, 2, 2, 2, 2, 2, 3, 1],
+    [1, 2, 1, 1, 1, 2, 1, 2, 1, 1, 1, 2, 1, 2, 1, 1, 1, 2, 1],
+    [1, 2, 2, 2, 1, 2, 1, 2, 2, 1, 2, 2, 1, 2, 1, 2, 2, 2, 1],
+    [1, 2, 1, 2, 1, 2, 1, 1, 2, 1, 2, 1, 1, 2, 1, 2, 1, 2, 1],
+    [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+  ],
+  [
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+    [1, 2, 1, 2, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 2, 1, 2, 1],
+    [1, 3, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1],
+    [1, 2, 1, 2, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, 2, 1, 2, 1],
+    [1, 2, 2, 2, 1, 2, 2, 2, 2, 1, 2, 2, 2, 2, 1, 2, 2, 2, 1],
+    [1, 1, 1, 2, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 2, 1, 1, 1],
+    [0, 0, 2, 2, 2, 2, 1, 0, 0, 0, 0, 0, 1, 2, 2, 2, 2, 0, 0],
+    [1, 1, 1, 2, 1, 2, 1, 0, 1, 0, 1, 0, 1, 2, 1, 2, 1, 1, 1],
+    [0, 0, 0, 2, 1, 2, 0, 0, 1, 0, 1, 0, 0, 2, 1, 2, 0, 0, 0],
+    [1, 1, 1, 2, 1, 2, 1, 0, 1, 1, 1, 0, 1, 2, 1, 2, 1, 1, 1],
+    [0, 0, 2, 2, 2, 2, 1, 0, 0, 0, 0, 0, 1, 2, 2, 2, 2, 0, 0],
+    [1, 1, 1, 2, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 2, 1, 1, 1],
+    [1, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 1],
+    [1, 2, 1, 2, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, 2, 1, 2, 1],
+    [1, 3, 1, 2, 2, 2, 2, 2, 2, 0, 2, 2, 2, 2, 2, 2, 1, 3, 1],
+    [1, 2, 1, 2, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 2, 1, 2, 1],
+    [1, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+    [1, 2, 1, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 1, 2, 1],
+    [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+  ],
+];
+
+const LEVEL_COLORS = [
+  { wall: "#1a1aff", wallStroke: "#4444ff", bg: "from-gray-900 to-black" },
+  { wall: "#4B0082", wallStroke: "#8B00FF", bg: "from-purple-950 to-black" },
+  { wall: "#8B0000", wallStroke: "#FF4444", bg: "from-red-950 to-black" },
+  { wall: "#FF4500", wallStroke: "#FF8C00", bg: "from-orange-950 to-black" },
+  { wall: "#1a1a1a", wallStroke: "#FF0000", bg: "from-black to-red-950" },
+];
+
+type Direction = "up" | "down" | "left" | "right";
+type Ghost = {
+  x: number;
+  y: number;
+  visualX: number;
+  visualY: number;
+  direction: Direction;
+  color: string;
+  scared: boolean;
+};
+
+type GameState = "ready" | "playing" | "won" | "lost" | "paused" | "levelComplete";
+
+const getNextPosition = (x: number, y: number, dir: Direction) => {
+  let newX = x;
+  let newY = y;
+  switch (dir) {
+    case "up":
+      newY--;
+      break;
+    case "down":
+      newY++;
+      break;
+    case "left":
+      newX--;
+      break;
+    case "right":
+      newX++;
+      break;
+  }
+  if (newX < 0) newX = MAZE_WIDTH - 1;
+  if (newX >= MAZE_WIDTH) newX = 0;
+  return { x: newX, y: newY };
+};
+
+const canMoveInMaze = (x: number, y: number, maze: number[][]) => {
+  if (x < 0 || x >= MAZE_WIDTH || y < 0 || y >= MAZE_HEIGHT) {
+    return y === 9 && (x === -1 || x === MAZE_WIDTH);
+  }
+  return maze[y][x] !== 1;
+};
+
+const lerp = (start: number, end: number, t: number) => {
+  return start + (end - start) * t;
+};
+
+export default function PacmanGame() {
+  const [level, setLevel] = useState(1);
+  const [totalScore, setTotalScore] = useState(0);
+  const [pacman, setPacman] = useState({ x: 9, y: 15, visualX: 9, visualY: 15 });
+  const [direction, setDirection] = useState<Direction>("right");
+  const [nextDirection, setNextDirection] = useState<Direction | null>(null);
+  const [maze, setMaze] = useState<number[][]>(() =>
+    MAZES[0].map((row) => [...row])
+  );
+  const [score, setScore] = useState(0);
+  const [lives, setLives] = useState(3);
+  const [gameState, setGameState] = useState<GameState>("ready");
+  const [powerMode, setPowerMode] = useState(false);
+  const [ghosts, setGhosts] = useState<Ghost[]>([
+    { x: 8, y: 9, visualX: 8, visualY: 9, direction: "left", color: "#FF0000", scared: false },
+    { x: 9, y: 9, visualX: 9, visualY: 9, direction: "up", color: "#00FFFF", scared: false },
+    { x: 10, y: 9, visualX: 10, visualY: 9, direction: "right", color: "#FFB8FF", scared: false },
+    { x: 9, y: 10, visualX: 9, visualY: 10, direction: "down", color: "#FFB852", scared: false },
+  ]);
+  const [isInvincible, setIsInvincible] = useState(false);
+  const [mouthOpen, setMouthOpen] = useState(true);
+  const [showRaikuMode, setShowRaikuMode] = useState(false);
+  const [showLevelUp, setShowLevelUp] = useState(false);
+
+  const gameContainerRef = useRef<HTMLDivElement>(null);
+  const gameLoopRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const powerModeRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const lastUpdateRef = useRef<number>(0);
+  const animationProgressRef = useRef<number>(1);
+  
+  const levelRef = useRef(1);
+  const directionRef = useRef<Direction>("right");
+  const nextDirectionRef = useRef<Direction | null>(null);
+  const pacmanRef = useRef({ x: 9, y: 15, visualX: 9, visualY: 15, prevX: 9, prevY: 15, isTeleporting: false });
+  const mazeRef = useRef<number[][]>(MAZES[0].map((row) => [...row]));
+  const livesRef = useRef(3);
+  const scoreRef = useRef(0);
+  const totalScoreRef = useRef(0);
+  const powerModeStateRef = useRef(false);
+  const ghostsRef = useRef<Ghost[]>([
+    { x: 8, y: 9, visualX: 8, visualY: 9, direction: "left", color: "#FF0000", scared: false },
+    { x: 9, y: 9, visualX: 9, visualY: 9, direction: "up", color: "#00FFFF", scared: false },
+    { x: 10, y: 9, visualX: 10, visualY: 9, direction: "right", color: "#FFB8FF", scared: false },
+    { x: 9, y: 10, visualX: 9, visualY: 10, direction: "down", color: "#FFB852", scared: false },
+  ]);
+  const isInvincibleRef = useRef(false);
+  const gameSpeedRef = useRef(LEVEL_CONFIGS[0].baseSpeed);
+
+  const initLevel = useCallback((lvl: number) => {
+    const config = LEVEL_CONFIGS[lvl - 1];
+    const newMaze = MAZES[lvl - 1].map((row) => [...row]);
+    
+    setPacman({ x: 9, y: 15, visualX: 9, visualY: 15 });
+    pacmanRef.current = { x: 9, y: 15, visualX: 9, visualY: 15, prevX: 9, prevY: 15, isTeleporting: false };
+    setDirection("right");
+    directionRef.current = "right";
+    setNextDirection(null);
+    nextDirectionRef.current = null;
+    setMaze(newMaze);
+    mazeRef.current = newMaze;
+    setScore(0);
+    scoreRef.current = 0;
+    setPowerMode(false);
+    powerModeStateRef.current = false;
+    setIsInvincible(false);
+    isInvincibleRef.current = false;
+    gameSpeedRef.current = config.baseSpeed;
+    animationProgressRef.current = 1;
+    setShowRaikuMode(false);
+    
+    const initialGhosts = [
+      { x: 8, y: 9, visualX: 8, visualY: 9, direction: "left" as Direction, color: "#FF0000", scared: false },
+      { x: 9, y: 9, visualX: 9, visualY: 9, direction: "up" as Direction, color: "#00FFFF", scared: false },
+      { x: 10, y: 9, visualX: 10, visualY: 9, direction: "right" as Direction, color: "#FFB8FF", scared: false },
+      { x: 9, y: 10, visualX: 9, visualY: 10, direction: "down" as Direction, color: "#FFB852", scared: false },
+    ];
+    setGhosts(initialGhosts);
+    ghostsRef.current = initialGhosts;
+  }, []);
+
+  const resetGame = useCallback(() => {
+    setLevel(1);
+    levelRef.current = 1;
+    setTotalScore(0);
+    totalScoreRef.current = 0;
+    setLives(3);
+    livesRef.current = 3;
+    setGameState("ready");
+    initLevel(1);
+    setShowLevelUp(false);
+  }, [initLevel]);
+
+  const nextLevel = useCallback(() => {
+    const newLevel = levelRef.current + 1;
+    if (newLevel > 5) {
+      setGameState("won");
+      return;
+    }
+    
+    setLevel(newLevel);
+    levelRef.current = newLevel;
+    totalScoreRef.current += scoreRef.current;
+    setTotalScore(totalScoreRef.current);
+    initLevel(newLevel);
+    setGameState("ready");
+    setShowLevelUp(false);
+  }, [initLevel]);
+
+  const shareToTwitter = useCallback(() => {
+    const finalScore = totalScoreRef.current + scoreRef.current;
+    const text = `I reached Level ${levelRef.current} with ${finalScore} points in Pacman! Can you beat my score?`;
+    const url = typeof window !== 'undefined' ? window.location.href : '';
+    const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
+    if (typeof window !== 'undefined') {
+      window.parent.postMessage({ type: "OPEN_EXTERNAL_URL", data: { url: twitterUrl } }, "*");
+    }
+  }, []);
+
+  const downloadScreenshot = useCallback(async () => {
+    const container = gameContainerRef.current;
+    if (!container) return;
+    
+    try {
+      const html2canvas = (await import('html2canvas')).default;
+      const canvas = await html2canvas(container, {
+        backgroundColor: '#000',
+        scale: 2,
+      });
+      
+      const link = document.createElement('a');
+      link.download = `pacman-level${levelRef.current}-score${totalScoreRef.current + scoreRef.current}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    } catch {
+      const gameCanvas = canvasRef.current;
+      if (gameCanvas) {
+        const link = document.createElement('a');
+        link.download = `pacman-level${levelRef.current}-score${totalScoreRef.current + scoreRef.current}.png`;
+        link.href = gameCanvas.toDataURL('image/png');
+        link.click();
+      }
+    }
+  }, []);
+
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (gameState === "ready") {
+        setGameState("playing");
+      }
+      if (gameState === "levelComplete") {
+        if (e.key === " " || e.key === "Enter") {
+          nextLevel();
+        }
+        return;
+      }
+      if (gameState === "won" || gameState === "lost") {
+        if (e.key === " " || e.key === "Enter") {
+          resetGame();
+        }
+        return;
+      }
+
+      let newDir: Direction | null = null;
+      switch (e.key) {
+        case "ArrowUp":
+        case "w":
+        case "W":
+          newDir = "up";
+          break;
+        case "ArrowDown":
+        case "s":
+        case "S":
+          newDir = "down";
+          break;
+        case "ArrowLeft":
+        case "a":
+        case "A":
+          newDir = "left";
+          break;
+        case "ArrowRight":
+        case "d":
+        case "D":
+          newDir = "right";
+          break;
+        case "p":
+        case "P":
+          if (gameState === "playing") setGameState("paused");
+          else if (gameState === "paused") setGameState("playing");
+          return;
+      }
+      if (newDir) {
+        e.preventDefault();
+        setNextDirection(newDir);
+        nextDirectionRef.current = newDir;
+      }
+    },
+    [gameState, resetGame, nextLevel]
+  );
+
+  const handleTouchStart = useCallback(
+    (e: React.TouchEvent) => {
+      if (gameState === "ready") {
+        setGameState("playing");
+      }
+      touchStartRef.current = {
+        x: e.touches[0].clientX,
+        y: e.touches[0].clientY,
+      };
+    },
+    [gameState]
+  );
+
+  const handleTouchEnd = useCallback(
+    (e: React.TouchEvent) => {
+      if (!touchStartRef.current) return;
+      if (gameState === "levelComplete") {
+        nextLevel();
+        return;
+      }
+      if (gameState === "won" || gameState === "lost") {
+        resetGame();
+        return;
+      }
+
+      const deltaX = e.changedTouches[0].clientX - touchStartRef.current.x;
+      const deltaY = e.changedTouches[0].clientY - touchStartRef.current.y;
+      const minSwipe = 30;
+
+      if (Math.abs(deltaX) > Math.abs(deltaY)) {
+        if (Math.abs(deltaX) > minSwipe) {
+          const newDir = deltaX > 0 ? "right" : "left";
+          setNextDirection(newDir);
+          nextDirectionRef.current = newDir;
+        }
+      } else {
+        if (Math.abs(deltaY) > minSwipe) {
+          const newDir = deltaY > 0 ? "down" : "up";
+          setNextDirection(newDir);
+          nextDirectionRef.current = newDir;
+        }
+      }
+      touchStartRef.current = null;
+    },
+    [gameState, resetGame, nextLevel]
+  );
+
+  useEffect(() => {
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleKeyDown]);
+
+  useEffect(() => {
+    if (gameState !== "playing") {
+      if (gameLoopRef.current) {
+        clearTimeout(gameLoopRef.current);
+        gameLoopRef.current = null;
+      }
+      return;
+    }
+
+    const config = LEVEL_CONFIGS[levelRef.current - 1];
+
+    const moveGhosts = (currentGhosts: Ghost[], pacX: number, pacY: number, currentMaze: number[][]) => {
+      return currentGhosts.map((ghost) => {
+        const directions: Direction[] = ["up", "down", "left", "right"];
+        const opposite: Record<Direction, Direction> = {
+          up: "down",
+          down: "up",
+          left: "right",
+          right: "left",
+        };
+
+        const validDirs = directions.filter((dir) => {
+          if (dir === opposite[ghost.direction]) return false;
+          const next = getNextPosition(ghost.x, ghost.y, dir);
+          return canMoveInMaze(next.x, next.y, currentMaze);
+        });
+
+        if (validDirs.length === 0) {
+          const next = getNextPosition(ghost.x, ghost.y, opposite[ghost.direction]);
+          if (canMoveInMaze(next.x, next.y, currentMaze)) {
+            return { ...ghost, ...next, visualX: ghost.x, visualY: ghost.y, direction: opposite[ghost.direction] };
+          }
+          return ghost;
+        }
+
+        let chosenDir: Direction;
+        if (ghost.scared) {
+          chosenDir = validDirs[Math.floor(Math.random() * validDirs.length)];
+        } else {
+          if (Math.random() < config.ghostChaseChance) {
+            let bestDir = validDirs[0];
+            let bestDist = Infinity;
+            validDirs.forEach((dir) => {
+              const next = getNextPosition(ghost.x, ghost.y, dir);
+              const dist = Math.abs(next.x - pacX) + Math.abs(next.y - pacY);
+              if (dist < bestDist) {
+                bestDist = dist;
+                bestDir = dir;
+              }
+            });
+            chosenDir = bestDir;
+          } else {
+            chosenDir = validDirs[Math.floor(Math.random() * validDirs.length)];
+          }
+        }
+
+        const nextPos = getNextPosition(ghost.x, ghost.y, chosenDir);
+        return { ...ghost, ...nextPos, visualX: ghost.x, visualY: ghost.y, direction: chosenDir };
+      });
+    };
+
+    const gameStep = () => {
+      const currentConfig = LEVEL_CONFIGS[levelRef.current - 1];
+      let currentDir = directionRef.current;
+      const nextDir = nextDirectionRef.current;
+      const currentPacman = pacmanRef.current;
+      const currentMaze = mazeRef.current;
+      
+      if (nextDir) {
+        const nextPos = getNextPosition(currentPacman.x, currentPacman.y, nextDir);
+        if (canMoveInMaze(nextPos.x, nextPos.y, currentMaze)) {
+          currentDir = nextDir;
+          setDirection(currentDir);
+          directionRef.current = currentDir;
+          setNextDirection(null);
+          nextDirectionRef.current = null;
+        }
+      }
+
+      const nextPos = getNextPosition(currentPacman.x, currentPacman.y, currentDir);
+
+      if (canMoveInMaze(nextPos.x, nextPos.y, currentMaze)) {
+        const isTeleporting = Math.abs(nextPos.x - currentPacman.x) > 1;
+        
+        pacmanRef.current = { 
+          ...nextPos, 
+          visualX: isTeleporting ? nextPos.x : currentPacman.x, 
+          visualY: currentPacman.y,
+          prevX: isTeleporting ? nextPos.x : currentPacman.x,
+          prevY: currentPacman.y,
+          isTeleporting
+        };
+        animationProgressRef.current = isTeleporting ? 1 : 0;
+
+        const cell = currentMaze[nextPos.y]?.[nextPos.x];
+        if (cell === 2) {
+          scoreRef.current += 10;
+          setScore(scoreRef.current);
+          currentMaze[nextPos.y][nextPos.x] = 0;
+          setMaze([...currentMaze.map((row) => [...row])]);
+          
+          let dotsRemaining = 0;
+          currentMaze.forEach((row) => {
+            row.forEach((c) => {
+              if (c === 2 || c === 3) dotsRemaining++;
+            });
+          });
+          if (dotsRemaining === 0) {
+            if (levelRef.current >= 5) {
+              totalScoreRef.current += scoreRef.current;
+              setTotalScore(totalScoreRef.current);
+              setGameState("won");
+            } else {
+              setShowLevelUp(true);
+              setGameState("levelComplete");
+            }
+          }
+        } else if (cell === 3) {
+          scoreRef.current += 50;
+          setScore(scoreRef.current);
+          currentMaze[nextPos.y][nextPos.x] = 0;
+          setMaze([...currentMaze.map((row) => [...row])]);
+          setPowerMode(true);
+          powerModeStateRef.current = true;
+          gameSpeedRef.current = currentConfig.powerSpeed;
+          
+          setShowRaikuMode(true);
+          setTimeout(() => setShowRaikuMode(false), 1500);
+          
+          const scaredGhosts = ghostsRef.current.map((g) => ({ ...g, scared: true }));
+          setGhosts(scaredGhosts);
+          ghostsRef.current = scaredGhosts;
+          
+          if (powerModeRef.current) clearTimeout(powerModeRef.current);
+          powerModeRef.current = setTimeout(() => {
+            setPowerMode(false);
+            powerModeStateRef.current = false;
+            gameSpeedRef.current = currentConfig.baseSpeed;
+            const normalGhosts = ghostsRef.current.map((g) => ({ ...g, scared: false }));
+            setGhosts(normalGhosts);
+            ghostsRef.current = normalGhosts;
+          }, currentConfig.powerDuration);
+          
+          let dotsRemaining = 0;
+          currentMaze.forEach((row) => {
+            row.forEach((c) => {
+              if (c === 2 || c === 3) dotsRemaining++;
+            });
+          });
+          if (dotsRemaining === 0) {
+            if (levelRef.current >= 5) {
+              totalScoreRef.current += scoreRef.current;
+              setTotalScore(totalScoreRef.current);
+              setGameState("won");
+            } else {
+              setShowLevelUp(true);
+              setGameState("levelComplete");
+            }
+          }
+        }
+      }
+
+      const newGhosts = moveGhosts(ghostsRef.current, pacmanRef.current.x, pacmanRef.current.y, currentMaze);
+      ghostsRef.current = newGhosts;
+      setGhosts([...newGhosts]);
+
+      if (!isInvincibleRef.current) {
+        const collision = newGhosts.some(
+          (ghost) => ghost.x === pacmanRef.current.x && ghost.y === pacmanRef.current.y
+        );
+
+        if (collision) {
+          if (powerModeStateRef.current) {
+            scoreRef.current += 200;
+            setScore(scoreRef.current);
+            const updatedGhosts = newGhosts.map((ghost) => {
+              if (ghost.x === pacmanRef.current.x && ghost.y === pacmanRef.current.y) {
+                return { ...ghost, x: 9, y: 9, visualX: 9, visualY: 9 };
+              }
+              return ghost;
+            });
+            ghostsRef.current = updatedGhosts;
+            setGhosts([...updatedGhosts]);
+          } else {
+            const currentLives = livesRef.current;
+            if (currentLives <= 1) {
+              setLives(0);
+              livesRef.current = 0;
+              totalScoreRef.current += scoreRef.current;
+              setTotalScore(totalScoreRef.current);
+              setGameState("lost");
+            } else {
+              livesRef.current = currentLives - 1;
+              setLives(currentLives - 1);
+              
+              pacmanRef.current = { x: 9, y: 15, visualX: 9, visualY: 15, prevX: 9, prevY: 15, isTeleporting: false };
+              setPacman({ x: 9, y: 15, visualX: 9, visualY: 15 });
+              directionRef.current = "right";
+              setDirection("right");
+              nextDirectionRef.current = null;
+              setNextDirection(null);
+              
+              const initialGhosts = [
+                { x: 8, y: 9, visualX: 8, visualY: 9, direction: "left" as Direction, color: "#FF0000", scared: false },
+                { x: 9, y: 9, visualX: 9, visualY: 9, direction: "up" as Direction, color: "#00FFFF", scared: false },
+                { x: 10, y: 9, visualX: 10, visualY: 9, direction: "right" as Direction, color: "#FFB8FF", scared: false },
+                { x: 9, y: 10, visualX: 9, visualY: 10, direction: "down" as Direction, color: "#FFB852", scared: false },
+              ];
+              ghostsRef.current = initialGhosts;
+              setGhosts(initialGhosts);
+              
+              setPowerMode(false);
+              powerModeStateRef.current = false;
+              gameSpeedRef.current = currentConfig.baseSpeed;
+              
+              isInvincibleRef.current = true;
+              setIsInvincible(true);
+              setTimeout(() => {
+                isInvincibleRef.current = false;
+                setIsInvincible(false);
+              }, 2000);
+            }
+          }
+        }
+      }
+    };
+    
+    const scheduleNextStep = () => {
+      gameLoopRef.current = setTimeout(() => {
+        gameStep();
+        scheduleNextStep();
+      }, gameSpeedRef.current);
+    };
+    
+    scheduleNextStep();
+
+    return () => {
+      if (gameLoopRef.current) {
+        clearTimeout(gameLoopRef.current);
+        gameLoopRef.current = null;
+      }
+    };
+  }, [gameState]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    let frameId: number;
+    const colors = LEVEL_COLORS[level - 1];
+    
+    const render = (timestamp: number) => {
+      const deltaTime = timestamp - lastUpdateRef.current;
+      lastUpdateRef.current = timestamp;
+      
+      if (gameState === "playing") {
+        animationProgressRef.current = Math.min(1, animationProgressRef.current + deltaTime / gameSpeedRef.current);
+        setMouthOpen(Math.sin(timestamp * 0.015) > 0);
+      }
+
+      const scale = window.devicePixelRatio || 1;
+      canvas.width = MAZE_WIDTH * CELL_SIZE * scale;
+      canvas.height = MAZE_HEIGHT * CELL_SIZE * scale;
+      canvas.style.width = `${MAZE_WIDTH * CELL_SIZE}px`;
+      canvas.style.height = `${MAZE_HEIGHT * CELL_SIZE}px`;
+      ctx.scale(scale, scale);
+
+      ctx.fillStyle = "#000";
+      ctx.fillRect(0, 0, MAZE_WIDTH * CELL_SIZE, MAZE_HEIGHT * CELL_SIZE);
+
+      maze.forEach((row, y) => {
+        row.forEach((cell, x) => {
+          const px = x * CELL_SIZE;
+          const py = y * CELL_SIZE;
+
+          if (cell === 1) {
+            ctx.fillStyle = colors.wall;
+            ctx.fillRect(px, py, CELL_SIZE, CELL_SIZE);
+            ctx.strokeStyle = colors.wallStroke;
+            ctx.lineWidth = 2;
+            ctx.strokeRect(px + 1, py + 1, CELL_SIZE - 2, CELL_SIZE - 2);
+          } else if (cell === 2) {
+            ctx.fillStyle = "#ffb8ae";
+            ctx.beginPath();
+            ctx.arc(px + CELL_SIZE / 2, py + CELL_SIZE / 2, 3, 0, Math.PI * 2);
+            ctx.fill();
+          } else if (cell === 3) {
+            const pulseSize = 6 + Math.sin(timestamp * 0.005) * 2;
+            ctx.fillStyle = "#ffb8ae";
+            ctx.beginPath();
+            ctx.arc(px + CELL_SIZE / 2, py + CELL_SIZE / 2, pulseSize, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        });
+      });
+
+      const currentPacman = pacmanRef.current;
+      const progress = animationProgressRef.current;
+      const visualX = currentPacman.isTeleporting ? currentPacman.x : lerp(currentPacman.prevX, currentPacman.x, progress);
+      const visualY = currentPacman.isTeleporting ? currentPacman.y : lerp(currentPacman.prevY, currentPacman.y, progress);
+      
+      const pacX = visualX * CELL_SIZE + CELL_SIZE / 2;
+      const pacY = visualY * CELL_SIZE + CELL_SIZE / 2;
+      const mouthAngle = mouthOpen ? 0.25 * Math.PI : 0.05 * Math.PI;
+      let startAngle = mouthAngle;
+      let endAngle = 2 * Math.PI - mouthAngle;
+
+      switch (direction) {
+        case "up":
+          startAngle = -Math.PI / 2 + mouthAngle;
+          endAngle = -Math.PI / 2 + 2 * Math.PI - mouthAngle;
+          break;
+        case "down":
+          startAngle = Math.PI / 2 + mouthAngle;
+          endAngle = Math.PI / 2 + 2 * Math.PI - mouthAngle;
+          break;
+        case "left":
+          startAngle = Math.PI + mouthAngle;
+          endAngle = Math.PI + 2 * Math.PI - mouthAngle;
+          break;
+        case "right":
+          startAngle = mouthAngle;
+          endAngle = 2 * Math.PI - mouthAngle;
+          break;
+      }
+
+      ctx.fillStyle = isInvincible ? "#FFFF00AA" : "#FFFF00";
+      ctx.beginPath();
+      ctx.moveTo(pacX, pacY);
+      ctx.arc(pacX, pacY, CELL_SIZE / 2 - 2, startAngle, endAngle);
+      ctx.closePath();
+      ctx.fill();
+
+      ghostsRef.current.forEach((ghost) => {
+        const ghostVisualX = lerp(ghost.visualX, ghost.x, progress);
+        const ghostVisualY = lerp(ghost.visualY, ghost.y, progress);
+        
+        const gx = ghostVisualX * CELL_SIZE + CELL_SIZE / 2;
+        const gy = ghostVisualY * CELL_SIZE + CELL_SIZE / 2;
+        const radius = CELL_SIZE / 2 - 2;
+
+        if (ghost.scared) {
+          const blinkPhase = Math.sin(timestamp * 0.01) > 0;
+          ctx.fillStyle = blinkPhase ? "#0000FF" : "#FFFFFF";
+        } else {
+          ctx.fillStyle = ghost.color;
+        }
+        
+        ctx.beginPath();
+        ctx.arc(gx, gy - 2, radius, Math.PI, 0, false);
+        ctx.lineTo(gx + radius, gy + radius - 2);
+        
+        const waveOffset = Math.sin(timestamp * 0.01) * 2;
+        for (let i = 0; i < 4; i++) {
+          const waveX = gx + radius - (radius * 2 * i) / 3;
+          ctx.lineTo(waveX, gy + radius - 4 + (i % 2 === 0 ? waveOffset : -waveOffset));
+        }
+        ctx.lineTo(gx - radius, gy + radius - 2);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = "#FFF";
+        ctx.beginPath();
+        ctx.arc(gx - 4, gy - 4, 4, 0, Math.PI * 2);
+        ctx.arc(gx + 4, gy - 4, 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = ghost.scared ? "#FFF" : "#000";
+        ctx.beginPath();
+        ctx.arc(gx - 4, gy - 3, 2, 0, Math.PI * 2);
+        ctx.arc(gx + 4, gy - 3, 2, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      if (gameState === "ready") {
+        ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+        ctx.fillRect(0, 0, MAZE_WIDTH * CELL_SIZE, MAZE_HEIGHT * CELL_SIZE);
+        ctx.fillStyle = "#FFFF00";
+        ctx.font = "bold 16px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText(`LEVEL ${level}`, MAZE_WIDTH * CELL_SIZE / 2, MAZE_HEIGHT * CELL_SIZE / 2 - 35);
+        ctx.fillStyle = "#FFF";
+        ctx.font = "bold 12px Arial";
+        ctx.fillText(LEVEL_CONFIGS[level - 1].name, MAZE_WIDTH * CELL_SIZE / 2, MAZE_HEIGHT * CELL_SIZE / 2 - 15);
+        ctx.fillStyle = "#FFFF00";
+        ctx.font = "bold 18px Arial";
+        ctx.fillText("TAP or PRESS", MAZE_WIDTH * CELL_SIZE / 2, MAZE_HEIGHT * CELL_SIZE / 2 + 10);
+        ctx.fillText("TO START", MAZE_WIDTH * CELL_SIZE / 2, MAZE_HEIGHT * CELL_SIZE / 2 + 35);
+      } else if (gameState === "levelComplete") {
+        ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+        ctx.fillRect(0, 0, MAZE_WIDTH * CELL_SIZE, MAZE_HEIGHT * CELL_SIZE);
+        ctx.fillStyle = "#00FF00";
+        ctx.font = "bold 20px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText("LEVEL CLEAR!", MAZE_WIDTH * CELL_SIZE / 2, MAZE_HEIGHT * CELL_SIZE / 2 - 30);
+        ctx.fillStyle = "#FFF";
+        ctx.font = "16px Arial";
+        ctx.fillText(`Score: ${score}`, MAZE_WIDTH * CELL_SIZE / 2, MAZE_HEIGHT * CELL_SIZE / 2);
+        ctx.fillStyle = "#FFFF00";
+        ctx.font = "bold 14px Arial";
+        ctx.fillText("PRESS TO CONTINUE", MAZE_WIDTH * CELL_SIZE / 2, MAZE_HEIGHT * CELL_SIZE / 2 + 30);
+      } else if (gameState === "won") {
+        ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+        ctx.fillRect(0, 0, MAZE_WIDTH * CELL_SIZE, MAZE_HEIGHT * CELL_SIZE);
+        ctx.fillStyle = "#FFD700";
+        ctx.font = "bold 20px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText("VICTORY!", MAZE_WIDTH * CELL_SIZE / 2, MAZE_HEIGHT * CELL_SIZE / 2 - 30);
+        ctx.fillStyle = "#00FF00";
+        ctx.font = "bold 16px Arial";
+        ctx.fillText("ALL LEVELS COMPLETE!", MAZE_WIDTH * CELL_SIZE / 2, MAZE_HEIGHT * CELL_SIZE / 2);
+        ctx.fillStyle = "#FFF";
+        ctx.font = "16px Arial";
+        ctx.fillText(`Total: ${totalScore}`, MAZE_WIDTH * CELL_SIZE / 2, MAZE_HEIGHT * CELL_SIZE / 2 + 30);
+      } else if (gameState === "lost") {
+        ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+        ctx.fillRect(0, 0, MAZE_WIDTH * CELL_SIZE, MAZE_HEIGHT * CELL_SIZE);
+        ctx.fillStyle = "#FF0000";
+        ctx.font = "bold 24px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText("GAME OVER", MAZE_WIDTH * CELL_SIZE / 2, MAZE_HEIGHT * CELL_SIZE / 2 - 20);
+        ctx.fillStyle = "#FFF";
+        ctx.font = "16px Arial";
+        ctx.fillText(`Level: ${level}`, MAZE_WIDTH * CELL_SIZE / 2, MAZE_HEIGHT * CELL_SIZE / 2 + 10);
+        ctx.fillText(`Total: ${totalScore}`, MAZE_WIDTH * CELL_SIZE / 2, MAZE_HEIGHT * CELL_SIZE / 2 + 35);
+      } else if (gameState === "paused") {
+        ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+        ctx.fillRect(0, 0, MAZE_WIDTH * CELL_SIZE, MAZE_HEIGHT * CELL_SIZE);
+        ctx.fillStyle = "#FFFF00";
+        ctx.font = "bold 24px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText("PAUSED", MAZE_WIDTH * CELL_SIZE / 2, MAZE_HEIGHT * CELL_SIZE / 2);
+      }
+
+      frameId = requestAnimationFrame(render);
+    };
+
+    frameId = requestAnimationFrame(render);
+
+    return () => {
+      cancelAnimationFrame(frameId);
+    };
+  }, [maze, direction, gameState, powerMode, score, isInvincible, mouthOpen, level, totalScore]);
+
+  const currentColors = LEVEL_COLORS[level - 1];
+
+  return (
+    <div className={`min-h-screen bg-gradient-to-b ${currentColors.bg} flex flex-col items-center justify-center p-4 relative overflow-hidden transition-all duration-500`}>
+      {showRaikuMode && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none">
+          <div className="animate-raiku-mode">
+            <div className="relative">
+              <div className="absolute inset-0 bg-gradient-to-r from-cyan-500 via-blue-500 to-purple-500 blur-xl opacity-80 animate-pulse" />
+              <div className="relative bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 bg-clip-text text-transparent text-5xl md:text-7xl font-black tracking-wider transform skew-x-[-5deg] drop-shadow-2xl">
+                RAIKU MODE
+              </div>
+              <div className="absolute -inset-4 bg-gradient-to-r from-yellow-400 via-red-500 to-pink-500 opacity-30 blur-2xl animate-ping" />
+            </div>
+            <div className="text-white text-xl md:text-2xl font-bold mt-2 text-center animate-bounce">
+              ACTIVATED!
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showLevelUp && (
+        <div className="fixed inset-0 z-40 backdrop-blur-md bg-black/50 pointer-events-none" />
+      )}
+      
+      {showLevelUp && (
+        <div className="fixed inset-0 flex flex-col items-center justify-center z-50">
+          <div className="animate-raiku-mode pointer-events-none">
+            <div className="relative">
+              <div className="absolute inset-0 bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 blur-xl opacity-80 animate-pulse" />
+              <div className="relative bg-gradient-to-r from-green-400 via-emerald-500 to-teal-600 bg-clip-text text-transparent text-5xl md:text-7xl font-black tracking-wider transform skew-x-[-5deg] drop-shadow-2xl">
+                LEVEL UP!
+              </div>
+              <div className="absolute -inset-4 bg-gradient-to-r from-green-400 via-emerald-500 to-teal-500 opacity-30 blur-2xl animate-ping" />
+            </div>
+            <div className="text-white text-xl md:text-2xl font-bold mt-2 text-center animate-bounce">
+              NEXT: {LEVEL_CONFIGS[Math.min(level, 4)].name}
+            </div>
+          </div>
+          <div className="mt-8 flex gap-4">
+            <button
+              onClick={resetGame}
+              className="bg-yellow-500 hover:bg-yellow-400 text-black font-bold py-3 px-8 rounded-lg transition-all hover:scale-105 shadow-lg text-lg"
+            >
+              Restart
+            </button>
+            <button
+              onClick={nextLevel}
+              className="bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-8 rounded-lg transition-all hover:scale-105 shadow-lg animate-pulse text-lg"
+            >
+              Next Level →
+            </button>
+          </div>
+        </div>
+      )}
+
+      <style jsx>{`
+        @keyframes raiku-mode {
+          0% {
+            transform: scale(0) rotate(-10deg);
+            opacity: 0;
+          }
+          30% {
+            transform: scale(1.3) rotate(5deg);
+            opacity: 1;
+          }
+          50% {
+            transform: scale(1) rotate(-2deg);
+          }
+          70% {
+            transform: scale(1.1) rotate(2deg);
+          }
+          100% {
+            transform: scale(1) rotate(0deg);
+            opacity: 1;
+          }
+        }
+        .animate-raiku-mode {
+          animation: raiku-mode 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+      `}</style>
+
+      <div ref={gameContainerRef} className="flex flex-col items-center bg-black/80 p-4 rounded-xl">
+        <h1 className="text-yellow-400 text-3xl md:text-4xl font-bold mb-2 tracking-wider drop-shadow-[0_0_10px_rgba(250,204,21,0.5)]">
+          PACMAN
+        </h1>
+
+        <div className="text-center mb-2">
+          <div className="text-white text-sm font-bold">
+            Level {level}: <span className="text-cyan-400">{LEVEL_CONFIGS[level - 1].name}</span>
+          </div>
+          <div className="flex gap-1 justify-center mt-1">
+            {[1, 2, 3, 4, 5].map((l) => (
+              <div
+                key={l}
+                className={`w-3 h-3 rounded-full ${
+                  l < level ? "bg-green-500" : l === level ? "bg-yellow-400 animate-pulse" : "bg-gray-600"
+                }`}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className="flex gap-6 mb-2 text-white text-base">
+          <div>
+            Score: <span className="text-yellow-400 font-bold">{score}</span>
+          </div>
+          <div>
+            Total: <span className="text-green-400 font-bold">{totalScore + score}</span>
+          </div>
+          <div>
+            Lives:{" "}
+            <span className="text-red-500">
+              {"❤️".repeat(lives)}
+              {"🖤".repeat(3 - lives)}
+            </span>
+          </div>
+        </div>
+
+        {powerMode && (
+          <div className="text-cyan-400 text-sm mb-2 animate-pulse font-bold tracking-widest">
+            RAIKU MODE ACTIVE!
+          </div>
+        )}
+
+        {isInvincible && (
+          <div className="text-yellow-300 text-sm mb-2 animate-pulse font-bold">
+            INVINCIBLE!
+          </div>
+        )}
+
+        <div
+          className="border-4 rounded-lg overflow-hidden touch-none shadow-[0_0_20px_rgba(37,99,235,0.5)]"
+          style={{ borderColor: currentColors.wallStroke }}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+        >
+          <canvas
+            ref={canvasRef}
+            style={{
+              width: MAZE_WIDTH * CELL_SIZE,
+              height: MAZE_HEIGHT * CELL_SIZE,
+            }}
+          />
+        </div>
+      </div>
+
+      <div className="mt-4 grid grid-cols-3 gap-2 md:hidden">
+        <div />
+        <button
+          className="bg-gray-800 text-white p-4 rounded-lg active:bg-gray-600 text-2xl shadow-lg"
+          onClick={() => {
+            if (gameState === "ready") setGameState("playing");
+            if (gameState === "levelComplete") { nextLevel(); return; }
+            setNextDirection("up");
+            nextDirectionRef.current = "up";
+          }}
+        >
+          ▲
+        </button>
+        <div />
+        <button
+          className="bg-gray-800 text-white p-4 rounded-lg active:bg-gray-600 text-2xl shadow-lg"
+          onClick={() => {
+            if (gameState === "ready") setGameState("playing");
+            if (gameState === "levelComplete") { nextLevel(); return; }
+            setNextDirection("left");
+            nextDirectionRef.current = "left";
+          }}
+        >
+          ◀
+        </button>
+        <button
+          className="bg-gray-800 text-white p-4 rounded-lg active:bg-gray-600 text-2xl shadow-lg"
+          onClick={() => {
+            if (gameState === "ready") setGameState("playing");
+            if (gameState === "levelComplete") { nextLevel(); return; }
+            setNextDirection("down");
+            nextDirectionRef.current = "down";
+          }}
+        >
+          ▼
+        </button>
+        <button
+          className="bg-gray-800 text-white p-4 rounded-lg active:bg-gray-600 text-2xl shadow-lg"
+          onClick={() => {
+            if (gameState === "ready") setGameState("playing");
+            if (gameState === "levelComplete") { nextLevel(); return; }
+            setNextDirection("right");
+            nextDirectionRef.current = "right";
+          }}
+        >
+          ▶
+        </button>
+      </div>
+
+      <div className="mt-4 flex gap-4 flex-wrap justify-center">
+        <button
+          onClick={resetGame}
+          className="bg-yellow-500 hover:bg-yellow-400 text-black font-bold py-2 px-6 rounded-lg transition-all hover:scale-105 shadow-lg"
+        >
+          Restart
+        </button>
+        {gameState === "levelComplete" && !showLevelUp && (
+          <button
+            onClick={nextLevel}
+            className="bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-6 rounded-lg transition-all hover:scale-105 shadow-lg animate-pulse"
+          >
+            Next Level →
+          </button>
+        )}
+        {gameState === "playing" && (
+          <button
+            onClick={() => setGameState("paused")}
+            className="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-6 rounded-lg transition-all hover:scale-105 shadow-lg"
+          >
+            Pause
+          </button>
+        )}
+        {gameState === "paused" && (
+          <button
+            onClick={() => setGameState("playing")}
+            className="bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-6 rounded-lg transition-all hover:scale-105 shadow-lg"
+          >
+            Resume
+          </button>
+        )}
+        {(gameState === "won" || gameState === "lost") && (
+          <>
+            <button
+              onClick={shareToTwitter}
+              className="bg-sky-500 hover:bg-sky-400 text-white font-bold py-2 px-6 rounded-lg transition-all hover:scale-105 shadow-lg flex items-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+              </svg>
+              Share
+            </button>
+            <button
+              onClick={downloadScreenshot}
+              className="bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 px-6 rounded-lg transition-all hover:scale-105 shadow-lg flex items-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              Download
+            </button>
+          </>
+        )}
+      </div>
+
+      <div className="mt-4 text-gray-400 text-sm text-center max-w-sm">
+        <p className="hidden md:block">
+          Arrow keys or WASD to move. P to pause.
+        </p>
+        <p className="md:hidden">
+          Use buttons or swipe to move.
+        </p>
+      </div>
+
+      <div className="mt-2 text-gray-500 text-xs text-center">
+        <p>Difficulty increases each level: Faster ghosts, smarter AI, shorter power-ups</p>
+      </div>
+    </div>
+  );
+}

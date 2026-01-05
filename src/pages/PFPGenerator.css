@@ -1,0 +1,721 @@
+.pfp-generator-page {
+  min-height: 100vh;
+  background: #000;
+  color: #fff;
+  font-family: 'Courier New', monospace;
+}
+
+/* Keep navbar font consistent with other pages */
+.pfp-generator-page .navbar {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+}
+
+.pfp-generator-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  padding-top: 60px;
+}
+
+@media (min-width: 1024px) {
+  .pfp-generator-container {
+    flex-direction: row;
+  }
+}
+
+/* Form Panel */
+.form-panel {
+  flex: 1;
+  max-width: 100%;
+  background: #0E0D0B;
+  padding: 2rem;
+  min-height: 100vh;
+}
+
+@media (min-width: 768px) {
+  .form-panel {
+    padding: 4rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .form-panel {
+    max-width: 922px;
+  }
+}
+
+.form-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 25px;
+}
+
+.step-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 31px;
+  background: white;
+  color: black;
+  font-size: 19.2px;
+  font-weight: bold;
+  margin-right: 15px;
+}
+
+.form-title {
+  font-size: 28px;
+  font-weight: 500;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color: white;
+  line-height: 1.2;
+}
+
+.form-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-label {
+  color: #A0A0A0;
+  font-size: 12.8px;
+  font-weight: 500;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  letter-spacing: 0.1em;
+}
+
+.required {
+  color: #FF3B30;
+}
+
+.form-input {
+  background: #181715;
+  border: 1px solid #222222;
+  color: white;
+  padding: 15px;
+  font-size: 15.2px;
+  width: 100%;
+  outline: none;
+  font-family: inherit;
+}
+
+.form-input:focus {
+  border-color: #444444;
+}
+
+.form-input::placeholder {
+  color: #444444;
+}
+
+/* Role Selection */
+.role-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0;
+}
+
+.role-button {
+  border: 1px solid #222222;
+  padding: 12px;
+  font-size: 13.6px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: #0E0D0B;
+  color: #A0A0A0;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+  font-family: inherit;
+}
+
+.role-button:hover {
+  color: white;
+}
+
+.role-button.selected {
+  background: white;
+  color: black;
+}
+
+/* Profile Picture Upload */
+.upload-area {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed #222222;
+  background: #0E0D0B;
+  height: 120px;
+  cursor: pointer;
+  transition: border-color 0.2s;
+  overflow: hidden;
+  position: relative;
+}
+
+.upload-area:hover {
+  border-color: #444444;
+}
+
+.upload-text {
+  color: #A0A0A0;
+  font-size: 13.6px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.preview-image {
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+}
+
+.file-input {
+  display: none;
+}
+
+/* Divider */
+.divider {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 0;
+}
+
+.divider::before {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 1px;
+  background: #1A1A1A;
+  top: 50%;
+}
+
+.divider-text {
+  position: relative;
+  background: #0E0D0B;
+  padding: 0 1rem;
+  color: #666666;
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  font-weight: bold;
+}
+
+/* Twitter Input */
+.twitter-input-group {
+  display: flex;
+}
+
+.twitter-input {
+  flex: 1;
+  border-right: none;
+}
+
+.fetch-button {
+  background: #333333;
+  color: white;
+  font-size: 13.6px;
+  font-weight: bold;
+  padding: 0 25px;
+  border: 1px solid #222222;
+  cursor: pointer;
+  transition: background 0.2s;
+  font-family: inherit;
+}
+
+.fetch-button:hover:not(:disabled) {
+  background: #444444;
+}
+
+.fetch-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Textarea */
+.form-textarea {
+  background: #181715;
+  border: 1px solid #222222;
+  color: white;
+  padding: 15px;
+  font-size: 15.2px;
+  width: 100%;
+  height: 100px;
+  outline: none;
+  resize: none;
+  font-family: inherit;
+}
+
+.form-textarea:focus {
+  border-color: #444444;
+}
+
+.form-textarea::placeholder {
+  color: #444444;
+}
+
+/* Generate Button */
+.generate-button {
+  position: relative;
+  width: 100%;
+  background: #181715;
+  border: 1px solid #222222;
+  color: white;
+  font-size: 13px;
+  font-weight: bold;
+  padding: 18px;
+  letter-spacing: 0.2em;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 10px;
+  font-family: inherit;
+}
+
+.generate-button:hover {
+  background: #222222;
+}
+
+.generate-button:active {
+  transform: scale(0.99);
+}
+
+.button-corner {
+  position: absolute;
+  bottom: -1px;
+  right: -1px;
+  width: 4px;
+  height: 4px;
+  background: white;
+}
+
+/* Preview Panel */
+.preview-panel {
+  flex: 1;
+  background: #000000;
+  min-height: 100vh;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+}
+
+@media (min-width: 768px) {
+  .preview-panel {
+    padding: 4rem;
+  }
+}
+
+.preview-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 60px;
+  justify-content: center;
+}
+
+@media (min-width: 768px) {
+  .preview-header {
+    margin-bottom: 80px;
+    justify-content: flex-start;
+    margin-left: 15%;
+  }
+}
+
+.preview-header .step-badge {
+  width: 24px;
+  height: 24px;
+  font-size: 14px;
+  margin-right: 12px;
+}
+
+.preview-title {
+  font-size: 24px;
+  font-weight: 500;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color: white;
+}
+
+@media (min-width: 768px) {
+  .preview-title {
+    font-size: 28px;
+  }
+}
+
+/* Cards Container */
+.cards-container {
+  display: flex;
+  flex-direction: row;
+  gap: 24px;
+  align-items: center;
+  justify-content: center;
+  flex-grow: 1;
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 20px;
+}
+
+/* Card */
+.card {
+  position: relative;
+  width: 280px;
+  aspect-ratio: 2/3;
+  border: 1px solid #333;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  background-color: #0B0B0B;
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+}
+
+@media (min-width: 768px) {
+  .card {
+    width: 320px;
+  }
+}
+
+.card-gradient {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 40%;
+  background: linear-gradient(to bottom, #1a1a1a, transparent);
+}
+
+/* Front Card */
+.front-card .card-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding-top: 0.5rem;
+  align-items: center;
+  justify-content: flex-start;
+  padding-top: 8.1rem;
+  position: relative;
+  z-index: 10;
+}
+
+.profile-image {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid #333;
+  flex-shrink: 0;
+}
+
+@media (min-width: 768px) {
+  .profile-image {
+    width: 120px;
+    height: 120px;
+  }
+}
+
+.profile-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-placeholder {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: #222;
+  border: 2px solid #333;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+@media (min-width: 768px) {
+  .profile-placeholder {
+    width: 120px;
+    height: 120px;
+  }
+}
+
+.profile-placeholder span {
+  color: #666;
+  font-size: 3rem;
+  font-weight: bold;
+}
+
+.card-name {
+  color: white;
+  font-size: 1.25rem;
+  font-weight: bold;
+  text-align: center;
+  margin-bottom: 0.25rem;
+  padding-top: 1rem;
+}
+
+@media (min-width: 768px) {
+  .card-name {
+    font-size: 1.5rem;
+  }
+}
+
+.card-role {
+  color: #FFD700;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 0.25rem;
+}
+
+@media (min-width: 768px) {
+  .card-role {
+    font-size: 0.875rem;
+  }
+}
+
+.card-twitter {
+  color: #666;
+  font-size: 0.75rem;
+}
+
+.card-bio {
+  margin: 0.5rem 0 0 0;
+  padding: 0 0rem;
+  color: #999;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  text-align: center;
+  max-width: 100%;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  word-wrap: break-word;
+}
+
+@media (min-width: 768px) {
+  .card-bio {
+    font-size: 0.8rem;
+    padding: 0 2rem;
+  }
+}
+
+.card-footer {
+  position: absolute;
+  bottom: 1rem;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+}
+
+.card-brand {
+  font-size: 0.75rem;
+  color: #FFD700;
+  letter-spacing: 0.2em;
+  font-weight: bold;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.6), 0 0 20px rgba(255, 215, 0, 0.4);
+}
+
+/* Back Card */
+.back-card {
+  display: none;
+}
+
+@media (min-width: 640px) {
+  .back-card {
+    display: flex;
+  }
+}
+
+.card-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem;
+  position: relative;
+  z-index: 10;
+}
+
+.info-field {
+  margin-bottom: 1rem;
+}
+
+.info-label {
+  color: #666;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.info-value {
+  color: white;
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin: 0;
+}
+
+.role-value {
+  color: #FFD700;
+}
+
+.bio-field {
+  flex: 1;
+}
+
+.info-bio {
+  color: #999;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  margin-top: 0.25rem;
+}
+
+.card-brand-small {
+  font-size: 10px;
+  color: #444;
+  letter-spacing: 0.2em;
+}
+
+/* Placeholder Cards */
+.placeholder-card {
+  background: #0B0B0B;
+  border: 1px solid #222222;
+  position: relative;
+  overflow: hidden;
+}
+
+.back-placeholder {
+  display: none;
+}
+
+@media (min-width: 640px) {
+  .back-placeholder {
+    display: block;
+  }
+}
+
+.shimmer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    110deg,
+    transparent 35%,
+    rgba(255, 255, 255, 0.05) 50%,
+    transparent 65%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2.5s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Action Buttons */
+.action-buttons {
+  display: flex;
+  gap: 1rem;
+  margin-top: 2rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.action-btn {
+  padding: 0.75rem 1.5rem;
+  font-size: 0.875rem;
+  font-weight: bold;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  font-family: inherit;
+  border: none;
+}
+
+.action-btn:hover {
+  opacity: 0.85;
+}
+
+.action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.download-btn {
+  background: #ff6b6b;
+  color: black;
+}
+
+.twitter-btn {
+  background: #1DA1F2;
+  color: white;
+}
+
+/* Template Selector */
+.template-selector {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.template-btn {
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 2px solid transparent;
+  background: #222;
+  color: #888;
+}
+
+.template-btn:hover {
+  background: #333;
+  color: #fff;
+}
+
+.template-btn.active {
+  background: #ff6b6b;
+  color: #000;
+  border-color: #ff6b6b;
+}
+
+/* Raiku Template */
+.card.raiku-template {
+  background: transparent !important;
+  background-size: cover !important;
+  background-position: center !important;
+}
+
+.card.raiku-template .profile-image {
+  border-color: #fff !important;
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+}
+
+.card.raiku-template .card-name {
+  color: #fff !important;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.card.raiku-template .card-role {
+  color: rgba(255, 255, 255, 0.9) !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}

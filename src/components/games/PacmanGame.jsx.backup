@@ -1,0 +1,903 @@
+import { useState, useEffect, useCallback, useRef } from "react";
+import './PacmanGame.css';
+
+const CELL_SIZE = 20;
+const MAZE_WIDTH = 19;
+const MAZE_HEIGHT = 21;
+
+const LEVEL_CONFIGS = [
+  { baseSpeed: 120, powerSpeed: 80, ghostChaseChance: 0.6, powerDuration: 8000, name: "TRAINING GROUNDS" },
+  { baseSpeed: 110, powerSpeed: 75, ghostChaseChance: 0.7, powerDuration: 7000, name: "SHADOW REALM" },
+  { baseSpeed: 100, powerSpeed: 70, ghostChaseChance: 0.75, powerDuration: 6000, name: "DEMON'S LAIR" },
+  { baseSpeed: 90, powerSpeed: 65, ghostChaseChance: 0.8, powerDuration: 5000, name: "NIGHTMARE ZONE" },
+  { baseSpeed: 80, powerSpeed: 60, ghostChaseChance: 0.9, powerDuration: 4000, name: "FINAL BOSS" },
+];
+
+const MAZES = [
+  [
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+    [1, 3, 1, 1, 2, 1, 1, 1, 2, 1, 2, 1, 1, 1, 2, 1, 1, 3, 1],
+    [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+    [1, 2, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 2, 1],
+    [1, 2, 2, 2, 2, 1, 2, 2, 2, 1, 2, 2, 2, 1, 2, 2, 2, 2, 1],
+    [1, 1, 1, 1, 2, 1, 1, 1, 0, 1, 0, 1, 1, 1, 2, 1, 1, 1, 1],
+    [0, 0, 0, 1, 2, 1, 0, 0, 0, 0, 0, 0, 0, 1, 2, 1, 0, 0, 0],
+    [1, 1, 1, 1, 2, 1, 0, 1, 1, 0, 1, 1, 0, 1, 2, 1, 1, 1, 1],
+    [0, 0, 0, 0, 2, 0, 0, 1, 0, 0, 0, 1, 0, 0, 2, 0, 0, 0, 0],
+    [1, 1, 1, 1, 2, 1, 0, 1, 1, 1, 1, 1, 0, 1, 2, 1, 1, 1, 1],
+    [0, 0, 0, 1, 2, 1, 0, 0, 0, 0, 0, 0, 0, 1, 2, 1, 0, 0, 0],
+    [1, 1, 1, 1, 2, 1, 0, 1, 1, 1, 1, 1, 0, 1, 2, 1, 1, 1, 1],
+    [1, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+    [1, 2, 1, 1, 2, 1, 1, 1, 2, 1, 2, 1, 1, 1, 2, 1, 1, 2, 1],
+    [1, 3, 2, 1, 2, 2, 2, 2, 2, 0, 2, 2, 2, 2, 2, 1, 2, 3, 1],
+    [1, 1, 2, 1, 2, 1, 2, 1, 1, 1, 1, 1, 2, 1, 2, 1, 2, 1, 1],
+    [1, 2, 2, 2, 2, 1, 2, 2, 2, 1, 2, 2, 2, 1, 2, 2, 2, 2, 1],
+    [1, 2, 1, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 1, 2, 1],
+    [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+  ],
+  [
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+    [1, 2, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 2, 1],
+    [1, 3, 1, 0, 0, 2, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 1, 3, 1],
+    [1, 2, 1, 0, 1, 2, 1, 0, 0, 1, 0, 0, 1, 2, 1, 0, 1, 2, 1],
+    [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+    [1, 2, 1, 0, 1, 2, 1, 1, 0, 1, 0, 1, 1, 2, 1, 0, 1, 2, 1],
+    [0, 2, 0, 0, 0, 2, 1, 0, 0, 0, 0, 0, 1, 2, 0, 0, 0, 2, 0],
+    [1, 2, 1, 0, 1, 2, 1, 0, 1, 0, 1, 0, 1, 2, 1, 0, 1, 2, 1],
+    [1, 2, 2, 2, 2, 2, 0, 0, 1, 0, 1, 0, 0, 2, 2, 2, 2, 2, 1],
+    [1, 2, 1, 0, 1, 2, 1, 0, 1, 1, 1, 0, 1, 2, 1, 0, 1, 2, 1],
+    [0, 2, 0, 0, 0, 2, 1, 0, 0, 0, 0, 0, 1, 2, 0, 0, 0, 2, 0],
+    [1, 2, 1, 0, 1, 2, 1, 1, 0, 1, 0, 1, 1, 2, 1, 0, 1, 2, 1],
+    [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+    [1, 2, 1, 0, 1, 2, 1, 0, 0, 1, 0, 0, 1, 2, 1, 0, 1, 2, 1],
+    [1, 3, 1, 0, 0, 2, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 1, 3, 1],
+    [1, 2, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 2, 1],
+    [1, 2, 2, 2, 2, 2, 2, 2, 2, 0, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+    [1, 2, 1, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 1, 2, 1],
+    [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+  ],
+  [
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 1],
+    [1, 3, 1, 2, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, 2, 1, 3, 1],
+    [1, 2, 1, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 1, 2, 1],
+    [1, 2, 1, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 1, 2, 1],
+    [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+    [1, 1, 1, 2, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 2, 1, 1, 1],
+    [0, 0, 0, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 0, 0, 0],
+    [1, 1, 1, 2, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 2, 1, 1, 1],
+    [0, 0, 0, 2, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 2, 0, 0, 0],
+    [1, 1, 1, 2, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 2, 1, 1, 1],
+    [0, 0, 0, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 0, 0, 0],
+    [1, 1, 1, 2, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 2, 1, 1, 1],
+    [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+    [1, 2, 1, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 1, 2, 1],
+    [1, 2, 1, 2, 2, 2, 2, 2, 2, 0, 2, 2, 2, 2, 2, 2, 1, 2, 1],
+    [1, 3, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 3, 1],
+    [1, 2, 2, 2, 1, 2, 2, 2, 2, 1, 2, 2, 2, 2, 1, 2, 2, 2, 1],
+    [1, 2, 1, 1, 1, 2, 1, 1, 2, 1, 2, 1, 1, 2, 1, 1, 1, 2, 1],
+    [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+  ],
+  [
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 1],
+    [1, 2, 1, 1, 1, 2, 1, 2, 1, 1, 1, 2, 1, 2, 1, 1, 1, 2, 1],
+    [1, 3, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 3, 1],
+    [1, 1, 1, 2, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 2, 1, 1, 1],
+    [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+    [1, 2, 1, 1, 1, 2, 1, 1, 0, 1, 0, 1, 1, 2, 1, 1, 1, 2, 1],
+    [0, 2, 2, 2, 1, 2, 1, 0, 0, 0, 0, 0, 1, 2, 1, 2, 2, 2, 0],
+    [1, 1, 1, 2, 1, 2, 1, 0, 1, 0, 1, 0, 1, 2, 1, 2, 1, 1, 1],
+    [0, 0, 0, 2, 0, 2, 0, 0, 1, 0, 1, 0, 0, 2, 0, 2, 0, 0, 0],
+    [1, 1, 1, 2, 1, 2, 1, 0, 1, 1, 1, 0, 1, 2, 1, 2, 1, 1, 1],
+    [0, 2, 2, 2, 1, 2, 1, 0, 0, 0, 0, 0, 1, 2, 1, 2, 2, 2, 0],
+    [1, 2, 1, 1, 1, 2, 1, 1, 0, 1, 0, 1, 1, 2, 1, 1, 1, 2, 1],
+    [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+    [1, 1, 1, 2, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 2, 1, 1, 1],
+    [1, 3, 2, 2, 2, 2, 2, 2, 2, 0, 2, 2, 2, 2, 2, 2, 2, 3, 1],
+    [1, 2, 1, 1, 1, 2, 1, 2, 1, 1, 1, 2, 1, 2, 1, 1, 1, 2, 1],
+    [1, 2, 2, 2, 1, 2, 1, 2, 2, 1, 2, 2, 1, 2, 1, 2, 2, 2, 1],
+    [1, 2, 1, 2, 1, 2, 1, 1, 2, 1, 2, 1, 1, 2, 1, 2, 1, 2, 1],
+    [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+  ],
+  [
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+    [1, 2, 1, 2, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 2, 1, 2, 1],
+    [1, 3, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1],
+    [1, 2, 1, 2, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, 2, 1, 2, 1],
+    [1, 2, 2, 2, 1, 2, 2, 2, 2, 1, 2, 2, 2, 2, 1, 2, 2, 2, 1],
+    [1, 1, 1, 2, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 2, 1, 1, 1],
+    [0, 0, 2, 2, 2, 2, 1, 0, 0, 0, 0, 0, 1, 2, 2, 2, 2, 0, 0],
+    [1, 1, 1, 2, 1, 2, 1, 0, 1, 0, 1, 0, 1, 2, 1, 2, 1, 1, 1],
+    [0, 0, 0, 2, 1, 2, 0, 0, 1, 0, 1, 0, 0, 2, 1, 2, 0, 0, 0],
+    [1, 1, 1, 2, 1, 2, 1, 0, 1, 1, 1, 0, 1, 2, 1, 2, 1, 1, 1],
+    [0, 0, 2, 2, 2, 2, 1, 0, 0, 0, 0, 0, 1, 2, 2, 2, 2, 0, 0],
+    [1, 1, 1, 2, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 2, 1, 1, 1],
+    [1, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 1],
+    [1, 2, 1, 2, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, 2, 1, 2, 1],
+    [1, 3, 1, 2, 2, 2, 2, 2, 2, 0, 2, 2, 2, 2, 2, 2, 1, 3, 1],
+    [1, 2, 1, 2, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 2, 1, 2, 1],
+    [1, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+    [1, 2, 1, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 1, 2, 1],
+    [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+  ],
+];
+
+const LEVEL_COLORS = [
+  { wall: "#1a1aff", wallStroke: "#4444ff", bg: "from-gray-900 to-black" },
+  { wall: "#4B0082", wallStroke: "#8B00FF", bg: "from-purple-950 to-black" },
+  { wall: "#8B0000", wallStroke: "#FF4444", bg: "from-red-950 to-black" },
+  { wall: "#FF4500", wallStroke: "#FF8C00", bg: "from-orange-950 to-black" },
+  { wall: "#1a1a1a", wallStroke: "#FF0000", bg: "from-black to-red-950" },
+];
+
+const getNextPosition = (x, y, dir) => {
+  let newX = x;
+  let newY = y;
+  switch (dir) {
+    case "up":
+      newY--;
+      break;
+    case "down":
+      newY++;
+      break;
+    case "left":
+      newX--;
+      break;
+    case "right":
+      newX++;
+      break;
+  }
+  if (newX < 0) newX = MAZE_WIDTH - 1;
+  if (newX >= MAZE_WIDTH) newX = 0;
+  return { x: newX, y: newY };
+};
+
+const canMoveInMaze = (x, y, maze) => {
+  if (x < 0 || x >= MAZE_WIDTH || y < 0 || y >= MAZE_HEIGHT) {
+    return y === 9 && (x === -1 || x === MAZE_WIDTH);
+  }
+  return maze[y][x] !== 1;
+};
+
+const lerp = (start, end, t) => {
+  return start + (end - start) * t;
+};
+
+export default function PacmanGame() {
+  const [pacman, setPacman] = useState({ x: 9, y: 15, visualX: 9, visualY: 15 });
+  const [direction, setDirection] = useState("right");
+  const [nextDirection, setNextDirection] = useState(null);
+  const [maze, setMaze] = useState(() =>
+    MAZE.map((row) => [...row])
+  );
+  const [score, setScore] = useState(0);
+  const [lives, setLives] = useState(3);
+  const [gameState, setGameState] = useState("ready");
+  const [powerMode, setPowerMode] = useState(false);
+  const [ghosts, setGhosts] = useState([
+    { x: 8, y: 9, visualX: 8, visualY: 9, direction: "left", color: "#FF0000", scared: false },
+    { x: 9, y: 9, visualX: 9, visualY: 9, direction: "up", color: "#00FFFF", scared: false },
+    { x: 10, y: 9, visualX: 10, visualY: 9, direction: "right", color: "#FFB8FF", scared: false },
+    { x: 9, y: 10, visualX: 9, visualY: 10, direction: "down", color: "#FFB852", scared: false },
+  ]);
+  const [isInvincible, setIsInvincible] = useState(false);
+  const [mouthOpen, setMouthOpen] = useState(true);
+  const [showRaikuMode, setShowRaikuMode] = useState(false);
+
+  const gameLoopRef = useRef(null);
+  const powerModeRef = useRef(null);
+  const touchStartRef = useRef(null);
+  const canvasRef = useRef(null);
+  const lastUpdateRef = useRef(0);
+  const animationProgressRef = useRef(1);
+  
+  const directionRef = useRef("right");
+  const nextDirectionRef = useRef(null);
+  const pacmanRef = useRef({ x: 9, y: 15, visualX: 9, visualY: 15, prevX: 9, prevY: 15, isTeleporting: false });
+  const mazeRef = useRef(MAZE.map((row) => [...row]));
+  const livesRef = useRef(3);
+  const scoreRef = useRef(0);
+  const powerModeStateRef = useRef(false);
+  const ghostsRef = useRef([
+    { x: 8, y: 9, visualX: 8, visualY: 9, direction: "left", color: "#FF0000", scared: false },
+    { x: 9, y: 9, visualX: 9, visualY: 9, direction: "up", color: "#00FFFF", scared: false },
+    { x: 10, y: 9, visualX: 10, visualY: 9, direction: "right", color: "#FFB8FF", scared: false },
+    { x: 9, y: 10, visualX: 9, visualY: 10, direction: "down", color: "#FFB852", scared: false },
+  ]);
+  const isInvincibleRef = useRef(false);
+  const gameSpeedRef = useRef(BASE_SPEED);
+
+  const resetGame = useCallback(() => {
+    setPacman({ x: 9, y: 15, visualX: 9, visualY: 15 });
+    pacmanRef.current = { x: 9, y: 15, visualX: 9, visualY: 15, prevX: 9, prevY: 15, isTeleporting: false };
+    setDirection("right");
+    directionRef.current = "right";
+    setNextDirection(null);
+    nextDirectionRef.current = null;
+    const newMaze = MAZE.map((row) => [...row]);
+    setMaze(newMaze);
+    mazeRef.current = newMaze;
+    setScore(0);
+    scoreRef.current = 0;
+    setLives(3);
+    livesRef.current = 3;
+    setGameState("ready");
+    setPowerMode(false);
+    powerModeStateRef.current = false;
+    setIsInvincible(false);
+    isInvincibleRef.current = false;
+    gameSpeedRef.current = BASE_SPEED;
+    animationProgressRef.current = 1;
+    setShowRaikuMode(false);
+    const initialGhosts = [
+      { x: 8, y: 9, visualX: 8, visualY: 9, direction: "left", color: "#FF0000", scared: false },
+      { x: 9, y: 9, visualX: 9, visualY: 9, direction: "up", color: "#00FFFF", scared: false },
+      { x: 10, y: 9, visualX: 10, visualY: 9, direction: "right", color: "#FFB8FF", scared: false },
+      { x: 9, y: 10, visualX: 9, visualY: 10, direction: "down", color: "#FFB852", scared: false },
+    ];
+    setGhosts(initialGhosts);
+    ghostsRef.current = initialGhosts;
+  }, []);
+
+  const shareToTwitter = useCallback(() => {
+    const text = `I scored ${scoreRef.current} points in Pacman at Raiku House! 🟡👻\n\nCan you beat my score?`;
+    const url = window.location.origin;
+    const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
+    window.open(twitterUrl, '_blank');
+  }, []);
+
+  const handleKeyDown = useCallback(
+    (e) => {
+      if (gameState === "ready") {
+        setGameState("playing");
+      }
+      if (gameState === "won" || gameState === "lost") {
+        if (e.key === " " || e.key === "Enter") {
+          resetGame();
+        }
+        return;
+      }
+
+      let newDir = null;
+      switch (e.key) {
+        case "ArrowUp":
+        case "w":
+        case "W":
+          newDir = "up";
+          break;
+        case "ArrowDown":
+        case "s":
+        case "S":
+          newDir = "down";
+          break;
+        case "ArrowLeft":
+        case "a":
+        case "A":
+          newDir = "left";
+          break;
+        case "ArrowRight":
+        case "d":
+        case "D":
+          newDir = "right";
+          break;
+        case "p":
+        case "P":
+          if (gameState === "playing") setGameState("paused");
+          else if (gameState === "paused") setGameState("playing");
+          return;
+      }
+      if (newDir) {
+        e.preventDefault();
+        setNextDirection(newDir);
+        nextDirectionRef.current = newDir;
+      }
+    },
+    [gameState, resetGame]
+  );
+
+  const handleTouchStart = useCallback(
+    (e) => {
+      if (gameState === "ready") {
+        setGameState("playing");
+      }
+      touchStartRef.current = {
+        x: e.touches[0].clientX,
+        y: e.touches[0].clientY,
+      };
+    },
+    [gameState]
+  );
+
+  const handleTouchEnd = useCallback(
+    (e) => {
+      if (!touchStartRef.current) return;
+      if (gameState === "won" || gameState === "lost") {
+        resetGame();
+        return;
+      }
+
+      const deltaX = e.changedTouches[0].clientX - touchStartRef.current.x;
+      const deltaY = e.changedTouches[0].clientY - touchStartRef.current.y;
+      const minSwipe = 30;
+
+      if (Math.abs(deltaX) > Math.abs(deltaY)) {
+        if (Math.abs(deltaX) > minSwipe) {
+          const newDir = deltaX > 0 ? "right" : "left";
+          setNextDirection(newDir);
+          nextDirectionRef.current = newDir;
+        }
+      } else {
+        if (Math.abs(deltaY) > minSwipe) {
+          const newDir = deltaY > 0 ? "down" : "up";
+          setNextDirection(newDir);
+          nextDirectionRef.current = newDir;
+        }
+      }
+      touchStartRef.current = null;
+    },
+    [gameState, resetGame]
+  );
+
+  useEffect(() => {
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleKeyDown]);
+
+  useEffect(() => {
+    if (gameState !== "playing") {
+      if (gameLoopRef.current) {
+        clearTimeout(gameLoopRef.current);
+        gameLoopRef.current = null;
+      }
+      return;
+    }
+
+    const moveGhosts = (currentGhosts, pacX, pacY, currentMaze) => {
+      return currentGhosts.map((ghost) => {
+        const directions = ["up", "down", "left", "right"];
+        const opposite = {
+          up: "down",
+          down: "up",
+          left: "right",
+          right: "left",
+        };
+
+        const validDirs = directions.filter((dir) => {
+          if (dir === opposite[ghost.direction]) return false;
+          const next = getNextPosition(ghost.x, ghost.y, dir);
+          return canMoveInMaze(next.x, next.y, currentMaze);
+        });
+
+        if (validDirs.length === 0) {
+          const next = getNextPosition(ghost.x, ghost.y, opposite[ghost.direction]);
+          if (canMoveInMaze(next.x, next.y, currentMaze)) {
+            return { ...ghost, ...next, visualX: ghost.x, visualY: ghost.y, direction: opposite[ghost.direction] };
+          }
+          return ghost;
+        }
+
+        let chosenDir;
+        if (ghost.scared) {
+          chosenDir = validDirs[Math.floor(Math.random() * validDirs.length)];
+        } else {
+          if (Math.random() < 0.7) {
+            let bestDir = validDirs[0];
+            let bestDist = Infinity;
+            validDirs.forEach((dir) => {
+              const next = getNextPosition(ghost.x, ghost.y, dir);
+              const dist = Math.abs(next.x - pacX) + Math.abs(next.y - pacY);
+              if (dist < bestDist) {
+                bestDist = dist;
+                bestDir = dir;
+              }
+            });
+            chosenDir = bestDir;
+          } else {
+            chosenDir = validDirs[Math.floor(Math.random() * validDirs.length)];
+          }
+        }
+
+        const nextPos = getNextPosition(ghost.x, ghost.y, chosenDir);
+        return { ...ghost, ...nextPos, visualX: ghost.x, visualY: ghost.y, direction: chosenDir };
+      });
+    };
+
+    const gameStep = () => {
+      let currentDir = directionRef.current;
+      const nextDir = nextDirectionRef.current;
+      const currentPacman = pacmanRef.current;
+      const currentMaze = mazeRef.current;
+      
+      if (nextDir) {
+        const nextPos = getNextPosition(currentPacman.x, currentPacman.y, nextDir);
+        if (canMoveInMaze(nextPos.x, nextPos.y, currentMaze)) {
+          currentDir = nextDir;
+          setDirection(currentDir);
+          directionRef.current = currentDir;
+          setNextDirection(null);
+          nextDirectionRef.current = null;
+        }
+      }
+
+      const nextPos = getNextPosition(currentPacman.x, currentPacman.y, currentDir);
+
+      if (canMoveInMaze(nextPos.x, nextPos.y, currentMaze)) {
+        const isTeleporting = Math.abs(nextPos.x - currentPacman.x) > 1;
+        
+        pacmanRef.current = { 
+          ...nextPos, 
+          visualX: isTeleporting ? nextPos.x : currentPacman.x, 
+          visualY: currentPacman.y,
+          prevX: isTeleporting ? nextPos.x : currentPacman.x,
+          prevY: currentPacman.y,
+          isTeleporting
+        };
+        animationProgressRef.current = isTeleporting ? 1 : 0;
+
+        const cell = currentMaze[nextPos.y]?.[nextPos.x];
+        if (cell === 2) {
+          scoreRef.current += 10;
+          setScore(scoreRef.current);
+          currentMaze[nextPos.y][nextPos.x] = 0;
+          setMaze([...currentMaze.map((row) => [...row])]);
+          
+          let dotsRemaining = 0;
+          currentMaze.forEach((row) => {
+            row.forEach((c) => {
+              if (c === 2 || c === 3) dotsRemaining++;
+            });
+          });
+          if (dotsRemaining === 0) {
+            setGameState("won");
+          }
+        } else if (cell === 3) {
+          scoreRef.current += 50;
+          setScore(scoreRef.current);
+          currentMaze[nextPos.y][nextPos.x] = 0;
+          setMaze([...currentMaze.map((row) => [...row])]);
+          setPowerMode(true);
+          powerModeStateRef.current = true;
+          gameSpeedRef.current = POWER_SPEED;
+          
+          setShowRaikuMode(true);
+          setTimeout(() => setShowRaikuMode(false), 1500);
+          
+          const scaredGhosts = ghostsRef.current.map((g) => ({ ...g, scared: true }));
+          setGhosts(scaredGhosts);
+          ghostsRef.current = scaredGhosts;
+          
+          if (powerModeRef.current) clearTimeout(powerModeRef.current);
+          powerModeRef.current = setTimeout(() => {
+            setPowerMode(false);
+            powerModeStateRef.current = false;
+            gameSpeedRef.current = BASE_SPEED;
+            const normalGhosts = ghostsRef.current.map((g) => ({ ...g, scared: false }));
+            setGhosts(normalGhosts);
+            ghostsRef.current = normalGhosts;
+          }, 7000);
+          
+          let dotsRemaining = 0;
+          currentMaze.forEach((row) => {
+            row.forEach((c) => {
+              if (c === 2 || c === 3) dotsRemaining++;
+            });
+          });
+          if (dotsRemaining === 0) {
+            setGameState("won");
+          }
+        }
+      }
+
+      const newGhosts = moveGhosts(ghostsRef.current, pacmanRef.current.x, pacmanRef.current.y, currentMaze);
+      ghostsRef.current = newGhosts;
+      setGhosts([...newGhosts]);
+
+      if (!isInvincibleRef.current) {
+        const collision = newGhosts.some(
+          (ghost) => ghost.x === pacmanRef.current.x && ghost.y === pacmanRef.current.y
+        );
+
+        if (collision) {
+          if (powerModeStateRef.current) {
+            scoreRef.current += 200;
+            setScore(scoreRef.current);
+            const updatedGhosts = newGhosts.map((ghost) => {
+              if (ghost.x === pacmanRef.current.x && ghost.y === pacmanRef.current.y) {
+                return { ...ghost, x: 9, y: 9, visualX: 9, visualY: 9 };
+              }
+              return ghost;
+            });
+            ghostsRef.current = updatedGhosts;
+            setGhosts([...updatedGhosts]);
+          } else {
+            const currentLives = livesRef.current;
+            if (currentLives <= 1) {
+              setLives(0);
+              livesRef.current = 0;
+              setGameState("lost");
+            } else {
+              livesRef.current = currentLives - 1;
+              setLives(currentLives - 1);
+              
+              pacmanRef.current = { x: 9, y: 15, visualX: 9, visualY: 15, prevX: 9, prevY: 15, isTeleporting: false };
+              setPacman({ x: 9, y: 15, visualX: 9, visualY: 15 });
+              directionRef.current = "right";
+              setDirection("right");
+              nextDirectionRef.current = null;
+              setNextDirection(null);
+              
+              const initialGhosts = [
+                { x: 8, y: 9, visualX: 8, visualY: 9, direction: "left", color: "#FF0000", scared: false },
+                { x: 9, y: 9, visualX: 9, visualY: 9, direction: "up", color: "#00FFFF", scared: false },
+                { x: 10, y: 9, visualX: 10, visualY: 9, direction: "right", color: "#FFB8FF", scared: false },
+                { x: 9, y: 10, visualX: 9, visualY: 10, direction: "down", color: "#FFB852", scared: false },
+              ];
+              ghostsRef.current = initialGhosts;
+              setGhosts(initialGhosts);
+              
+              setPowerMode(false);
+              powerModeStateRef.current = false;
+              gameSpeedRef.current = BASE_SPEED;
+              
+              isInvincibleRef.current = true;
+              setIsInvincible(true);
+              setTimeout(() => {
+                isInvincibleRef.current = false;
+                setIsInvincible(false);
+              }, 2000);
+            }
+          }
+        }
+      }
+    };
+    
+    const scheduleNextStep = () => {
+      gameLoopRef.current = setTimeout(() => {
+        gameStep();
+        scheduleNextStep();
+      }, gameSpeedRef.current);
+    };
+    
+    scheduleNextStep();
+
+    return () => {
+      if (gameLoopRef.current) {
+        clearTimeout(gameLoopRef.current);
+        gameLoopRef.current = null;
+      }
+    };
+  }, [gameState]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    let frameId;
+    
+    const render = (timestamp) => {
+      const deltaTime = timestamp - lastUpdateRef.current;
+      lastUpdateRef.current = timestamp;
+      
+      if (gameState === "playing") {
+        animationProgressRef.current = Math.min(1, animationProgressRef.current + deltaTime / gameSpeedRef.current);
+        setMouthOpen(Math.sin(timestamp * 0.015) > 0);
+      }
+
+      const scale = window.devicePixelRatio || 1;
+      canvas.width = MAZE_WIDTH * CELL_SIZE * scale;
+      canvas.height = MAZE_HEIGHT * CELL_SIZE * scale;
+      canvas.style.width = `${MAZE_WIDTH * CELL_SIZE}px`;
+      canvas.style.height = `${MAZE_HEIGHT * CELL_SIZE}px`;
+      ctx.scale(scale, scale);
+
+      ctx.fillStyle = "#000";
+      ctx.fillRect(0, 0, MAZE_WIDTH * CELL_SIZE, MAZE_HEIGHT * CELL_SIZE);
+
+      maze.forEach((row, y) => {
+        row.forEach((cell, x) => {
+          const px = x * CELL_SIZE;
+          const py = y * CELL_SIZE;
+
+          if (cell === 1) {
+            ctx.fillStyle = "#1a1aff";
+            ctx.fillRect(px, py, CELL_SIZE, CELL_SIZE);
+            ctx.strokeStyle = "#4444ff";
+            ctx.lineWidth = 2;
+            ctx.strokeRect(px + 1, py + 1, CELL_SIZE - 2, CELL_SIZE - 2);
+          } else if (cell === 2) {
+            ctx.fillStyle = "#ffb8ae";
+            ctx.beginPath();
+            ctx.arc(px + CELL_SIZE / 2, py + CELL_SIZE / 2, 3, 0, Math.PI * 2);
+            ctx.fill();
+          } else if (cell === 3) {
+            const pulseSize = 6 + Math.sin(timestamp * 0.005) * 2;
+            ctx.fillStyle = "#ffb8ae";
+            ctx.beginPath();
+            ctx.arc(px + CELL_SIZE / 2, py + CELL_SIZE / 2, pulseSize, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        });
+      });
+
+      const currentPacman = pacmanRef.current;
+      const progress = animationProgressRef.current;
+      const visualX = currentPacman.isTeleporting ? currentPacman.x : lerp(currentPacman.prevX, currentPacman.x, progress);
+      const visualY = currentPacman.isTeleporting ? currentPacman.y : lerp(currentPacman.prevY, currentPacman.y, progress);
+      
+      const pacX = visualX * CELL_SIZE + CELL_SIZE / 2;
+      const pacY = visualY * CELL_SIZE + CELL_SIZE / 2;
+      const mouthAngle = mouthOpen ? 0.25 * Math.PI : 0.05 * Math.PI;
+      let startAngle = mouthAngle;
+      let endAngle = 2 * Math.PI - mouthAngle;
+
+      switch (direction) {
+        case "up":
+          startAngle = -Math.PI / 2 + mouthAngle;
+          endAngle = -Math.PI / 2 + 2 * Math.PI - mouthAngle;
+          break;
+        case "down":
+          startAngle = Math.PI / 2 + mouthAngle;
+          endAngle = Math.PI / 2 + 2 * Math.PI - mouthAngle;
+          break;
+        case "left":
+          startAngle = Math.PI + mouthAngle;
+          endAngle = Math.PI + 2 * Math.PI - mouthAngle;
+          break;
+        case "right":
+          startAngle = mouthAngle;
+          endAngle = 2 * Math.PI - mouthAngle;
+          break;
+      }
+
+      ctx.fillStyle = isInvincible ? "#FFFF00AA" : "#FFFF00";
+      ctx.beginPath();
+      ctx.moveTo(pacX, pacY);
+      ctx.arc(pacX, pacY, CELL_SIZE / 2 - 2, startAngle, endAngle);
+      ctx.closePath();
+      ctx.fill();
+
+      ghostsRef.current.forEach((ghost) => {
+        const ghostVisualX = lerp(ghost.visualX, ghost.x, progress);
+        const ghostVisualY = lerp(ghost.visualY, ghost.y, progress);
+        
+        const gx = ghostVisualX * CELL_SIZE + CELL_SIZE / 2;
+        const gy = ghostVisualY * CELL_SIZE + CELL_SIZE / 2;
+        const radius = CELL_SIZE / 2 - 2;
+
+        if (ghost.scared) {
+          const blinkPhase = Math.sin(timestamp * 0.01) > 0;
+          ctx.fillStyle = blinkPhase ? "#0000FF" : "#FFFFFF";
+        } else {
+          ctx.fillStyle = ghost.color;
+        }
+        
+        ctx.beginPath();
+        ctx.arc(gx, gy - 2, radius, Math.PI, 0, false);
+        ctx.lineTo(gx + radius, gy + radius - 2);
+        
+        const waveOffset = Math.sin(timestamp * 0.01) * 2;
+        for (let i = 0; i < 4; i++) {
+          const waveX = gx + radius - (radius * 2 * i) / 3;
+          ctx.lineTo(waveX, gy + radius - 4 + (i % 2 === 0 ? waveOffset : -waveOffset));
+        }
+        ctx.lineTo(gx - radius, gy + radius - 2);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = "#FFF";
+        ctx.beginPath();
+        ctx.arc(gx - 4, gy - 4, 4, 0, Math.PI * 2);
+        ctx.arc(gx + 4, gy - 4, 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = ghost.scared ? "#FFF" : "#000";
+        ctx.beginPath();
+        ctx.arc(gx - 4, gy - 3, 2, 0, Math.PI * 2);
+        ctx.arc(gx + 4, gy - 3, 2, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      if (gameState === "ready") {
+        ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+        ctx.fillRect(0, 0, MAZE_WIDTH * CELL_SIZE, MAZE_HEIGHT * CELL_SIZE);
+        ctx.fillStyle = "#FFFF00";
+        ctx.font = "bold 20px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText("TAP or PRESS", MAZE_WIDTH * CELL_SIZE / 2, MAZE_HEIGHT * CELL_SIZE / 2 - 15);
+        ctx.fillText("TO START", MAZE_WIDTH * CELL_SIZE / 2, MAZE_HEIGHT * CELL_SIZE / 2 + 15);
+      } else if (gameState === "won") {
+        ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+        ctx.fillRect(0, 0, MAZE_WIDTH * CELL_SIZE, MAZE_HEIGHT * CELL_SIZE);
+        ctx.fillStyle = "#00FF00";
+        ctx.font = "bold 24px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText("YOU WIN!", MAZE_WIDTH * CELL_SIZE / 2, MAZE_HEIGHT * CELL_SIZE / 2 - 10);
+        ctx.fillStyle = "#FFF";
+        ctx.font = "16px Arial";
+        ctx.fillText(`Score: ${score}`, MAZE_WIDTH * CELL_SIZE / 2, MAZE_HEIGHT * CELL_SIZE / 2 + 20);
+      } else if (gameState === "lost") {
+        ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+        ctx.fillRect(0, 0, MAZE_WIDTH * CELL_SIZE, MAZE_HEIGHT * CELL_SIZE);
+        ctx.fillStyle = "#FF0000";
+        ctx.font = "bold 24px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText("GAME OVER", MAZE_WIDTH * CELL_SIZE / 2, MAZE_HEIGHT * CELL_SIZE / 2 - 10);
+        ctx.fillStyle = "#FFF";
+        ctx.font = "16px Arial";
+        ctx.fillText(`Score: ${score}`, MAZE_WIDTH * CELL_SIZE / 2, MAZE_HEIGHT * CELL_SIZE / 2 + 20);
+      } else if (gameState === "paused") {
+        ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+        ctx.fillRect(0, 0, MAZE_WIDTH * CELL_SIZE, MAZE_HEIGHT * CELL_SIZE);
+        ctx.fillStyle = "#FFFF00";
+        ctx.font = "bold 24px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText("PAUSED", MAZE_WIDTH * CELL_SIZE / 2, MAZE_HEIGHT * CELL_SIZE / 2);
+      }
+
+      frameId = requestAnimationFrame(render);
+    };
+
+    frameId = requestAnimationFrame(render);
+
+    return () => {
+      cancelAnimationFrame(frameId);
+    };
+  }, [maze, direction, gameState, powerMode, score, isInvincible, mouthOpen]);
+
+  return (
+    <div className="pacman-game">
+      {showRaikuMode && (
+        <div className="raiku-mode-overlay">
+          <div className="raiku-mode-text">
+            <div className="raiku-mode-title">RAIKU MODE</div>
+            <div className="raiku-mode-subtitle">ACTIVATED!</div>
+          </div>
+        </div>
+      )}
+
+      <h1 className="game-title">PACMAN</h1>
+
+      <div className="game-stats">
+        <div className="stat-item">
+          Score: <span className="stat-value">{score}</span>
+        </div>
+        <div className="stat-item">
+          Lives:{" "}
+          <span className="stat-lives">
+            {"❤️".repeat(lives)}
+            {"🖤".repeat(3 - lives)}
+          </span>
+        </div>
+      </div>
+
+      {powerMode && (
+        <div className="power-mode-indicator">
+          RAIKU MODE ACTIVE! (+50% SPEED)
+        </div>
+      )}
+
+      {isInvincible && (
+        <div className="invincible-indicator">
+          INVINCIBLE!
+        </div>
+      )}
+
+      <div
+        className="game-canvas-container"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
+        <canvas
+          ref={canvasRef}
+          style={{
+            width: MAZE_WIDTH * CELL_SIZE,
+            height: MAZE_HEIGHT * CELL_SIZE,
+          }}
+        />
+      </div>
+
+      <div className="game-controls-mobile">
+        <div className="controls-row">
+          <div />
+          <button
+            className="control-btn"
+            onClick={() => {
+              if (gameState === "ready") setGameState("playing");
+              setNextDirection("up");
+              nextDirectionRef.current = "up";
+            }}
+          >
+            ▲
+          </button>
+          <div />
+        </div>
+        <div className="controls-row">
+          <button
+            className="control-btn"
+            onClick={() => {
+              if (gameState === "ready") setGameState("playing");
+              setNextDirection("left");
+              nextDirectionRef.current = "left";
+            }}
+          >
+            ◀
+          </button>
+          <button
+            className="control-btn"
+            onClick={() => {
+              if (gameState === "ready") setGameState("playing");
+              setNextDirection("down");
+              nextDirectionRef.current = "down";
+            }}
+          >
+            ▼
+          </button>
+          <button
+            className="control-btn"
+            onClick={() => {
+              if (gameState === "ready") setGameState("playing");
+              setNextDirection("right");
+              nextDirectionRef.current = "right";
+            }}
+          >
+            ▶
+          </button>
+        </div>
+      </div>
+
+      <div className="game-buttons">
+        <button onClick={resetGame} className="game-btn primary">
+          Play Again
+        </button>
+        {gameState === "playing" && (
+          <button
+            onClick={() => setGameState("paused")}
+            className="game-btn"
+          >
+            Pause
+          </button>
+        )}
+        {gameState === "paused" && (
+          <button
+            onClick={() => setGameState("playing")}
+            className="game-btn success"
+          >
+            Resume
+          </button>
+        )}
+        {(gameState === "won" || gameState === "lost") && (
+          <button onClick={shareToTwitter} className="game-btn share">
+            <svg className="share-icon" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+            </svg>
+            Share Score
+          </button>
+        )}
+      </div>
+
+      <div className="game-instructions">
+        <p className="instructions-desktop">
+          Use arrow keys or WASD to move. Press P to pause.
+        </p>
+        <p className="instructions-mobile">
+          Use directional buttons or swipe to move.
+        </p>
+      </div>
+
+      <div className="game-legend">
+        <p>🟡 Pacman | 🔴🟣🟢🟠 Ghosts | ⚪ Dot | ⭕ Power Pill (+Speed)</p>
+      </div>
+    </div>
+  );
+}
