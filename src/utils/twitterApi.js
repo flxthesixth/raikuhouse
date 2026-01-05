@@ -1,16 +1,17 @@
-// Twitter API Helper using Express Backend (which calls RapidAPI)
+// Twitter API Helper using Vercel Serverless Functions
 
 /**
- * Fetch Twitter profile data from our Express backend
+ * Fetch Twitter profile data from our API
  * @param {string} username - Twitter username (without @)
  * @returns {Promise<Object>} Profile data
  */
 export async function getTwitterProfile(username) {
   try {
     const cleanUsername = username.replace('@', '').trim()
-    const url = `http://localhost:3001/api/twitter/profile?username=${cleanUsername}`
+    // Use relative URL - works for both local dev and production
+    const url = `/api/twitter/profile?username=${cleanUsername}`
     
-    console.log(`📡 Fetching from backend: ${url}`)
+    console.log(`📡 Fetching from API: ${url}`)
     
     const response = await fetch(url, {
       method: 'GET',
