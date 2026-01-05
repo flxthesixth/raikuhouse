@@ -206,40 +206,36 @@ export default function PFPGenerator({ onNavigate, currentPage }) {
       let dataUrl
       
       try {
-        // Try html-to-image first (better quality)
-        console.log('🎨 Trying html-to-image...')
-        dataUrl = await toPng(frontCardRef.current, {
-          quality: 1,
-          pixelRatio: 3,
-          cacheBust: true,
-          includeQueryParams: false,
-          skipAutoScale: false,
-          skipFonts: false,
-          preferredFontFormat: 'woff2',
-          filter: (node) => {
-            return true
-          },
-          style: {
-            transform: 'scale(1)',
-            transformOrigin: 'top left',
-          },
-        })
-        console.log('✅ html-to-image success')
-      } catch (htmlToImageError) {
-        console.warn('⚠️ html-to-image failed, trying html2canvas...', htmlToImageError)
-        
-        // Fallback to html2canvas (better at handling images)
+        // Use html2canvas with proper background handling
+        console.log('🎨 Capturing card with html2canvas...')
         const canvas = await html2canvas(frontCardRef.current, {
           scale: 3,
           useCORS: true,
           allowTaint: true,
-          logging: true,
+          logging: false,
           imageTimeout: 15000,
-          removeContainer: true,
+          backgroundColor: null,
+          onclone: (clonedDoc) => {
+            const clonedCard = clonedDoc.querySelector('.front-card')
+            if (clonedCard && cardBackgroundBase64) {
+              clonedCard.style.backgroundImage = `url("${cardBackgroundBase64}")`
+            }
+          }
         })
         
         dataUrl = canvas.toDataURL('image/png', 1.0)
-        console.log('✅ html2canvas success')
+        console.log('✅ html2canvas success, dataUrl length:', dataUrl.length)
+      } catch (canvasError) {
+        console.warn('⚠️ html2canvas failed, trying html-to-image...', canvasError)
+        
+        // Fallback to html-to-image
+        dataUrl = await toPng(frontCardRef.current, {
+          quality: 1,
+          pixelRatio: 3,
+          cacheBust: true,
+          backgroundColor: '#0B0B0B',
+        })
+        console.log('✅ html-to-image success')
       }
       
       console.log('✅ Image captured, dataUrl length:', dataUrl.length)
@@ -274,27 +270,35 @@ export default function PFPGenerator({ onNavigate, currentPage }) {
         })
       }))
       
-      await new Promise(resolve => setTimeout(resolve, 300))
+      await new Promise(resolve => setTimeout(resolve, 500))
       
       let dataUrl
       
       try {
-        // Try html-to-image
+        // Use html2canvas with proper background handling
+        const canvas = await html2canvas(frontCardRef.current, {
+          scale: 3,
+          useCORS: true,
+          allowTaint: true,
+          logging: false,
+          imageTimeout: 15000,
+          backgroundColor: null,
+          onclone: (clonedDoc) => {
+            const clonedCard = clonedDoc.querySelector('.front-card')
+            if (clonedCard && cardBackgroundBase64) {
+              clonedCard.style.backgroundImage = `url("${cardBackgroundBase64}")`
+            }
+          }
+        })
+        dataUrl = canvas.toDataURL('image/png', 1.0)
+      } catch (err) {
+        // Fallback to html-to-image
         dataUrl = await toPng(frontCardRef.current, {
           quality: 1,
           pixelRatio: 3,
           backgroundColor: '#0B0B0B',
           cacheBust: true,
         })
-      } catch (err) {
-        // Fallback to html2canvas
-        const canvas = await html2canvas(frontCardRef.current, {
-          backgroundColor: '#0B0B0B',
-          scale: 3,
-          useCORS: true,
-          allowTaint: false,
-        })
-        dataUrl = canvas.toDataURL('image/png', 1.0)
       }
       
       const link = document.createElement('a')
@@ -306,7 +310,7 @@ export default function PFPGenerator({ onNavigate, currentPage }) {
       
       // Then open Twitter
       setTimeout(() => {
-        const tweetText = `Check out my Raiku ID Card! I'm a ${cardData.role} at @RaikuCommunity 🏠\n\nGenerate yours at raiku.house`
+        const tweetText = `Check out my Raiku ID Card! I'm a ${cardData.role} at @RaikuCommunity 🏠\n\nGenerate yours at https://raikuhouse.vercel.app`
         const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`
         window.open(twitterUrl, '_blank')
       }, 500)

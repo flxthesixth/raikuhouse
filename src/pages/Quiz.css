@@ -22,10 +22,11 @@
 .quiz-card {
   max-width: 800px;
   width: 100%;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(10, 10, 20, 0.4);
   border-radius: 20px;
   padding: 50px;
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   animation: slideIn 0.5s ease;
 }
