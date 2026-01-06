@@ -22,12 +22,12 @@
 .quiz-card {
   max-width: 800px;
   width: 100%;
-  background: rgba(10, 10, 20, 0.4);
+  background: rgba(0, 0, 0, 0.3);
   border-radius: 20px;
   padding: 50px;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 215, 0, 0.15);
   animation: slideIn 0.5s ease;
 }
 

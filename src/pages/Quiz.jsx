@@ -149,16 +149,16 @@ export default function Quiz({ onNavigate }) {
   return (
     <div className="quiz-page">
       <Particles
-        particleCount={150}
-        particleSpread={8}
+        particleCount={400}
+        particleSpread={10}
         speed={0.08}
         particleColors={['#FFD700', '#FFA500', '#FFEB3B']}
         moveParticlesOnHover={true}
         particleHoverFactor={0.5}
         alphaParticles={true}
-        particleBaseSize={80}
+        particleBaseSize={100}
         sizeRandomness={0.8}
-        cameraDistance={25}
+        cameraDistance={20}
       />
       <Navbar onNavigate={onNavigate} currentPage="quiz" />
       
