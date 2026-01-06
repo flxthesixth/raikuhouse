@@ -19,16 +19,16 @@ export default function Learn({ onNavigate }) {
   return (
     <div className="learn-page">
       <Particles
-        particleCount={400}
-        particleSpread={10}
+        particleCount={800}
+        particleSpread={12}
         speed={0.08}
         particleColors={['#FFD700', '#FFA500', '#FFEB3B']}
         moveParticlesOnHover={true}
         particleHoverFactor={0.5}
         alphaParticles={true}
-        particleBaseSize={100}
+        particleBaseSize={120}
         sizeRandomness={0.8}
-        cameraDistance={20}
+        cameraDistance={18}
       />
       <Navbar onNavigate={onNavigate} currentPage="learn" />
       
