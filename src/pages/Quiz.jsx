@@ -83,7 +83,7 @@ export default function Quiz({ onNavigate }) {
     
     // Then open Twitter with pre-filled text
     const pct = Math.round((score / questions.length) * 100)
-    const text = `🐉 I just scored ${score}/${questions.length} (${pct}%) on the Raiku Quiz!\n\n📊 Level: ${getDifficultyLabel()}\n\nTest your knowledge at https://raikuhouse.vercel.app 🚀\n\n`
+    const text = `I just scored ${score}/${questions.length} (${pct}%) on the Raiku Quiz!\n\n📊 Level: ${getDifficultyLabel()}\n\nTest your knowledge at https://raikuhouse.vercel.app 🚀\n\n`
     const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`
     window.open(twitterUrl, '_blank')
   }

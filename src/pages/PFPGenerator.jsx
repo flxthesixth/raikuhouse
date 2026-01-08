@@ -310,7 +310,7 @@ export default function PFPGenerator({ onNavigate, currentPage }) {
       
       // Then open Twitter
       setTimeout(() => {
-        const tweetText = `Check out my Raiku ID Card! I'm a ${cardData.role} at @RaikuCommunity 🏠\n\nGenerate yours at https://raikuhouse.vercel.app`
+        const tweetText = `Check out my Raiku ID Card! I'm a ${cardData.role} at @raikucom 🏠\n\nGenerate yours at https://raikuhouse.vercel.app`
         const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`
         window.open(twitterUrl, '_blank')
       }, 500)

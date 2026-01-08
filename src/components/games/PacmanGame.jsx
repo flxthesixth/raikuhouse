@@ -284,7 +284,7 @@ export default function PacmanGame() {
 
   const shareToTwitter = useCallback(async () => {
     const finalScore = totalScoreRef.current + scoreRef.current;
-    const text = `I reached Level ${levelRef.current} with ${finalScore} points in Pacman! Can you beat my score?`;
+    const text = `I reached Level ${levelRef.current} with ${finalScore} points in Rac-man! Can you beat my score?`;
     const url = typeof window !== 'undefined' ? window.location.href : '';
     const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
     
